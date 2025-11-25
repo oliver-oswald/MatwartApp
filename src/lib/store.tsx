@@ -50,9 +50,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setItems(prev => prev.filter(i => i.id !== itemId));
     };
 
-    const updateStock = (bookingItems: any[], multiplier: number) => {
+    const updateStock = (bookingItems: {id: string, quantity: number}[], multiplier: number) => {
         setItems(currentItems => currentItems.map(invItem => {
-            const bookedItem = bookingItems.find((bi: any) => bi.id === invItem.id);
+            const bookedItem = bookingItems.find((bi) => bi.id === invItem.id);
             if (bookedItem) {
                 const change = bookedItem.quantity * multiplier;
                 const newAvailable = Math.min(invItem.totalStock, Math.max(0, invItem.availableStock + change));
