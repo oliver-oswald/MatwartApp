@@ -25,21 +25,25 @@ export const useStore = () => {
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // -- Data State --
     const [items, setItems] = useState<Item[]>(() => {
+        if (typeof window === 'undefined') return []
         const saved = window?.localStorage?.getItem('bb_items');
         return saved ? JSON.parse(saved) : MOCK_ITEMS;
     });
 
     const [bookings, setBookings] = useState<Booking[]>(() => {
+        if (typeof window === 'undefined') return []
         const saved = window?.localStorage?.getItem('bb_bookings');
         return saved ? JSON.parse(saved) : [];
     });
 
     // -- Persistence --
     useEffect(() => {
+        if (typeof window === 'undefined') return
         window?.localStorage?.setItem('bb_items', JSON.stringify(items));
     }, [items]);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return
         window?.localStorage?.setItem('bb_bookings', JSON.stringify(bookings));
     }, [bookings]);
 
