@@ -1,3 +1,5 @@
+"use client"
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Item, Booking, BookingStatus, BrokenItemRecord } from '../types';
 import { MOCK_ITEMS } from '@/constants';
@@ -23,22 +25,22 @@ export const useStore = () => {
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // -- Data State --
     const [items, setItems] = useState<Item[]>(() => {
-        const saved = localStorage.getItem('bb_items');
+        const saved = window?.localStorage?.getItem('bb_items');
         return saved ? JSON.parse(saved) : MOCK_ITEMS;
     });
 
     const [bookings, setBookings] = useState<Booking[]>(() => {
-        const saved = localStorage.getItem('bb_bookings');
+        const saved = window?.localStorage?.getItem('bb_bookings');
         return saved ? JSON.parse(saved) : [];
     });
 
     // -- Persistence --
     useEffect(() => {
-        localStorage.setItem('bb_items', JSON.stringify(items));
+        window?.localStorage?.setItem('bb_items', JSON.stringify(items));
     }, [items]);
 
     useEffect(() => {
-        localStorage.setItem('bb_bookings', JSON.stringify(bookings));
+        window?.localStorage?.setItem('bb_bookings', JSON.stringify(bookings));
     }, [bookings]);
 
     // -- Actions --
