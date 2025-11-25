@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useStore } from '@/lib/store';
-import { CartItem } from '@/types';
+import { CartItem, Item } from '@/types';
 import { CATEGORIES } from '@/constants';
 import { Image } from '@/components/ui/next-shim';
 import { Plus, ShoppingBag, X, CheckCircle } from 'lucide-react';
@@ -26,7 +26,7 @@ export default function BrowsePage() {
             : items.filter(i => i.category === selectedCategory);
     }, [items, selectedCategory]);
 
-    const addToCart = (item: any) => {
+    const addToCart = (item: Item) => {
         setCart(prev => {
             const existing = prev.find(i => i.id === item.id);
             if (existing) {

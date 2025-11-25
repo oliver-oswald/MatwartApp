@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import { Item, Booking, BookingStatus, BrokenItemRecord } from '@/types';
+import { Item, Booking, BookingStatus, BrokenItemRecord, Categories } from '@/types';
 import { CATEGORIES } from '@/constants';
 import { PackageOpen, CalendarCheck, AlertTriangle, CheckSquare, Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
@@ -92,7 +92,7 @@ export default function AdminDashboard(){
         const newItem: Item = {
             id: Date.now().toString(),
             name: newItemName,
-            category: newItemCat as any,
+            category: newItemCat as Categories,
             pricePerDay: Number(newItemPrice),
             replacementCost: Number(newItemPrice) * 5, // Auto-calc rough replacement
             totalStock: Number(newItemStock),

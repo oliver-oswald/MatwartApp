@@ -1,10 +1,12 @@
+export type Categories = 'unterkunft' | 'kochen' | 'schlafen' | 'beleuchtung' | 'sonstiges'
+
 export interface Item {
     id: string;
     name: string;
     description: string;
     pricePerDay: number;
     replacementCost: number;
-    category: 'unterkunft' | 'kochen' | 'schlafen' | 'beleuchtung' | 'sonstiges';
+    category: Categories;
     imageUrl: string;
     totalStock: number;
     availableStock: number;
