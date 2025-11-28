@@ -17,11 +17,11 @@ export interface CartItem extends Item {
 }
 
 export enum BookingStatus {
-    PENDING = 'PENDING',
-    APPROVED = 'APPROVED',
-    ACTIVE = 'ACTIVE', // Picked up
-    COMPLETED = 'COMPLETED', // Returned and paid
-    CANCELLED = 'CANCELLED'
+    WARTEN = "WARTEN",
+    AKZEPTIERT = "AKZEPTIERT",
+    AKTIV = "AKTIV",
+    FERTIG = "FERTIG",
+    ABGELEHNT = "ABGELEHNT"
 }
 
 export interface BrokenItemRecord {
