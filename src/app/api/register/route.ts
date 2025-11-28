@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-// Define schema for input validation
 const userSchema = z.object({
     name: z.string().min(1, "Name is required"),
     email: z.string().min(1, "Email is required").email("Invalid email"),
@@ -28,7 +27,6 @@ export async function POST(req: Request) {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // 3. Create the new user
         const newUser = await db.user.create({
             data: {
                 name,
@@ -37,7 +35,6 @@ export async function POST(req: Request) {
             },
         });
 
-        // Remove password from response
         const { password: newUserPassword, ...rest } = newUser;
 
         return NextResponse.json(

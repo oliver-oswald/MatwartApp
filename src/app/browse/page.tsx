@@ -5,7 +5,7 @@ import { useStore } from '@/lib/store';
 import { CartItem, Item } from '@/types';
 import { CATEGORIES } from '@/constants';
 import { Image } from '@/components/ui/next-shim';
-import { Plus, ShoppingBag, X, CheckCircle } from 'lucide-react';
+import { Plus, X, CheckCircle, Backpack } from 'lucide-react';
 
 export default function BrowsePage() {
     const { items, addBooking } = useStore();
@@ -178,7 +178,7 @@ export default function BrowsePage() {
                     onClick={() => setIsCartOpen(true)}
                     className="bg-forest-800 hover:bg-forest-900 text-white p-4 rounded-full shadow-xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
                 >
-                    <ShoppingBag />
+                    <Backpack />
                     {cart.length > 0 && (
                         <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
               {cart.reduce((a, b) => a + b.quantity, 0)}
@@ -194,7 +194,7 @@ export default function BrowsePage() {
                     <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
                         <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-50">
                             <h2 className="text-xl font-bold text-stone-800 flex items-center gap-2">
-                                <ShoppingBag className="text-forest-600" />
+                                <Backpack className="text-forest-600" />
                                 Dein Rucksack
                             </h2>
                             <button onClick={() => setIsCartOpen(false)} className="p-2 hover:bg-stone-200 rounded-full text-stone-500">

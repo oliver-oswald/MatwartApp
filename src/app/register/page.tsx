@@ -1,55 +1,35 @@
 "use client"
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Tent, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Tent, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import {registerType, registerValidator} from "@/lib/validators/register";
+import {trpc} from "@/app/_trpc/client";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 
 export default function RegisterPage() {
     const router = useRouter();
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
+    const onSubmit = (register: registerType) => {
+        reset()
+        mutate(register)
+    }
 
-        try {
-            const response = await fetch('/api/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password,
-                }),
-            });
+    const {register, handleSubmit, formState: { errors }, reset} = useForm<registerType>({
+        resolver: zodResolver(registerValidator)
+    })
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.message || "Registrierung fehlgeschlagen.");
-                setIsLoading(false);
-            } else {
-                // Successful registration -> Redirect to Login
-                router.push('/login');
-            }
-        } catch (err) {
-            setError("Ein Fehler ist aufgetreten.");
-            setIsLoading(false);
+    const { mutate, isPending } = trpc.registerNewUser.useMutation({
+        onSuccess() {
+            router.push("/login")
         }
-    };
+    })
 
     return (
         <div className="min-h-screen bg-stone-50 flex flex-col justify-center items-center p-4">
 
-            {/* Brand Logo / Icon */}
             <div className="mb-8 flex flex-col items-center">
                 <div className="bg-forest-800 p-4 rounded-2xl shadow-lg mb-4 text-white">
                     <Tent size={40} />
@@ -58,62 +38,70 @@ export default function RegisterPage() {
                 <p className="text-stone-500 mt-2">Werde Teil des Teams!</p>
             </div>
 
-            {/* Register Card */}
             <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl border border-stone-100">
 
-                {/* Error Message */}
-                {error && (
-                    <div className="mb-6 bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
-                        <AlertCircle size={16} />
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Name</label>
                         <input
+                            {...register("name")}
                             type="text"
-                            required
-                            placeholder="Max Mustermann"
+                            autoFocus
+                            placeholder="Magnus Mustermann"
                             className="w-full rounded-lg border-stone-200 bg-stone-50 shadow-sm focus:border-forest-500 focus:ring-forest-500 p-3 transition-all"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
                         />
+                        {errors.name?.message !== undefined ? (
+                            <p className="text-red-500 text-xs">{errors.name.message}</p>
+                        ) : null}
                     </div>
 
                     <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">E-Mail Adresse</label>
                         <input
-                            type="email"
-                            required
+                            {...register("email")}
+                            type="text"
                             placeholder="name@example.com"
                             className="w-full rounded-lg border-stone-200 bg-stone-50 shadow-sm focus:border-forest-500 focus:ring-forest-500 p-3 transition-all"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
                         />
+                        {errors.email?.message !== undefined ? (
+                            <p className="text-red-500 text-xs">{errors.email.message}</p>
+                        ) : null}
                     </div>
 
                     <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Passwort</label>
                         <input
+                            {...register("password")}
                             type="password"
-                            required
                             placeholder="Min. 8 Zeichen"
                             className="w-full rounded-lg border-stone-200 bg-stone-50 shadow-sm focus:border-forest-500 focus:ring-forest-500 p-3 transition-all"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
                         />
+                        {errors.password?.message !== undefined ? (
+                            <p className="text-red-500 text-xs">{errors.password.message}</p>
+                        ) : null}
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Passwort Bestätigen</label>
+                        <input
+                            {...register("confirmPassword")}
+                            type="password"
+                            placeholder="Passwort Bestätigen"
+                            className="w-full rounded-lg border-stone-200 bg-stone-50 shadow-sm focus:border-forest-500 focus:ring-forest-500 p-3 transition-all"
+                        />
+                        {errors.confirmPassword?.message !== undefined ? (
+                            <p className="text-red-500 text-xs absolute">{errors.confirmPassword.message}</p>
+                        ) : null}
                     </div>
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isPending}
                         className="w-full bg-forest-800 hover:bg-forest-900 text-white font-bold py-3.5 px-4 rounded-lg shadow-lg transform transition hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2 mt-2"
                     >
-                        {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
+                        {isPending ? <Loader2 className="animate-spin" size={20}/> : (
                             <>
-                                Registrieren <ArrowRight size={18} />
+                                Registrieren <ArrowRight size={18}/>
                             </>
                         )}
                     </button>

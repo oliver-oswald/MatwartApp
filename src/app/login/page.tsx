@@ -29,8 +29,7 @@ export default function LoginPage() {
                 setError("Ungültige E-Mail oder Passwort.");
                 setIsLoading(false);
             } else {
-                // Successful login
-                router.push('/'); // Redirect to your browse page
+                router.push('/browse');
                 router.refresh();
             }
         } catch (err) {

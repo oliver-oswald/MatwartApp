@@ -6,8 +6,9 @@ import { db } from "./db";
 import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-    ...authConfig, // Inherit edge-safe config
+    ...authConfig,
     adapter: PrismaAdapter(db),
+    session: { strategy: "jwt" },
     providers: [
         CredentialsProvider({
             name: "Credentials",
@@ -16,61 +17,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) {
-                    return null;
-                }
-
-                const email = credentials.email as string;
-                const password = credentials.password as string;
-
+                if (!credentials?.email || !credentials?.password) return null;
                 const user = await db.user.findUnique({
-                    where: { email },
+                    where: { email: credentials.email as string },
                 });
 
-                if (!user || !user.password) {
-                    return null;
-                }
+                if (!user || !user.password) return null;
 
-                const passwordsMatch = await bcrypt.compare(password, user.password);
+                const passwordsMatch = await bcrypt.compare(
+                    credentials.password as string,
+                    user.password
+                );
 
                 if (passwordsMatch) {
-                    return {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        image: user.image,
-                    };
+                    return user;
                 }
                 return null;
             },
         }),
     ],
     callbacks: {
-        // Re-declare callbacks here to ensure they run with full context if needed
-        // or to perform DB lookups that can't happen on Edge.
-        ...authConfig.callbacks,
-        async jwt({ token, user }) {
-            // Logic from your original file:
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.id = user.id as string;
-                return token;
+
+                const dbUser = await db.user.findUnique({
+                    where: { id: user.id }
+                });
+                token.role = dbUser?.role || "USER";
+            }
+            if (trigger === "update" && session) {
+                token = { ...token, ...session }
             }
 
-            // We can use 'db' here because this file runs on Node.js
-            const dbUser = await db.user.findUnique({
-                where: { email: token.email! },
-            });
-
-            if (!dbUser) {
-                return token;
-            }
-
-            return {
-                id: dbUser.id,
-                name: dbUser.name,
-                email: dbUser.email,
-                picture: dbUser.image,
-            };
+            return token;
         },
+        session: authConfig.callbacks.session,
     },
 });

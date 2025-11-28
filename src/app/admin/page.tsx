@@ -316,7 +316,7 @@ export default function AdminDashboard(){
                                     <tr>
                                         <th className="p-3">Item</th>
                                         <th className="p-3">Kategorie</th>
-                                        <th className="p-3">Im Lager</th>
+                                        <th className="p-3 text-nowrap">Im Lager</th>
                                         <th className="p-3">Preis</th>
                                         <th className="p-3">Aktion</th>
                                     </tr>
