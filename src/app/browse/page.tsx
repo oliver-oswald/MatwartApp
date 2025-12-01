@@ -17,6 +17,7 @@ export default function BrowsePage() {
     const { data: items, isLoading } = trpc.getAllItems.useQuery()
 
     const filteredItems = useMemo(() => {
+        console.log(items)
         if (!items) return []
         return selectedCategory === 'all'
             ? items
@@ -104,6 +105,7 @@ export default function BrowsePage() {
             <CartDrawer
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
+                onSubmit={() => setCart([])}
                 cart={cart}
                 onRemove={removeFromCart}
                 onUpdateQuantity={updateQuantity}

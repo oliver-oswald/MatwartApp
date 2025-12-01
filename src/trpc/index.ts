@@ -57,7 +57,19 @@ export const appRouter = router({
         }),
     getAllBookings: adminProcedure
         .query(async () => {
-            return db.booking.findMany();
+            return db.booking.findMany({
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                include: {
+                    user: true,
+                    items: {
+                        include: {
+                            item: true
+                        }
+                    }
+                }
+            });
         }),
     addBooking: privateProcedure
         .input(addBookingValidator)
@@ -93,15 +105,6 @@ export const appRouter = router({
 
                     const itemTotal = dbItem.pricePerDay * reqItem.quantity * durationInDays;
                     totalRentalCost += itemTotal;
-
-                    await tx.item.update({
-                        where: {id: dbItem.id},
-                        data: {
-                            availableStock: {
-                                decrement: reqItem.quantity,
-                            },
-                        },
-                    });
 
                     bookingItemsData.push({
                         itemId: dbItem.id,
@@ -147,10 +150,10 @@ export const appRouter = router({
 
                 const oldStatus = booking.status;
 
-                const holdingStockStatuses = ["WARTEN", "AKZEPTIERT", "AKTIV"];
+                const holdingStockStatuses = ["AKZEPTIERT", "AKTIV"];
 
                 const wasHoldingStock = holdingStockStatuses.includes(oldStatus);
-                const willHoldStock = holdingStockStatuses.includes(newStatus);
+                const willHoldStock = holdingStockStatuses.includes(newStatus) || oldStatus === "WARTEN";
 
                 if (wasHoldingStock && !willHoldStock) {
                     for (const bookingItem of booking.items) {

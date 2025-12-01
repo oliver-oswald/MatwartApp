@@ -32,6 +32,7 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.66.1",
     "react-hot-toast": "^2.6.0",
+    "superjson": "^2.2.6",
     "zod": "^4.1.13"
   },
   "devDependencies": {

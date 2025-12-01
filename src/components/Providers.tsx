@@ -1,6 +1,5 @@
 "use client"
 
-import { StoreProvider } from "@/lib/store"
 import {FC, ReactNode, useState} from "react"
 import {QueryClient} from "@tanstack/query-core";
 import {trpc} from "@/app/_trpc/client";
@@ -25,14 +24,12 @@ interface ProvidersProps {
          })
      );
 
-    return <StoreProvider>
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+    return<trpc.Provider client={trpcClient} queryClient={queryClient}>
             <QueryClientProvider client={queryClient}>
                 <Toaster position="top-center" reverseOrder={false} />
                 {children}
             </QueryClientProvider>
         </trpc.Provider>
-    </StoreProvider>
  }
 
  export default Providers

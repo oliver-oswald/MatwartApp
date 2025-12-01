@@ -4,12 +4,13 @@ import { Image } from '@/components/ui/next-shim';
 import {X, Backpack, Loader2} from 'lucide-react';
 import {toast} from "react-hot-toast";
 import {useForm} from "react-hook-form";
-import {addBookingValidator, bookingType} from "@/lib/validators/booking";
+import {addBookingValidator, bookingInputType, bookingOutputType} from "@/lib/validators/booking";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {trpc} from "@/app/_trpc/client";
 interface CartDrawerProps {
     isOpen: boolean;
     onClose: () => void;
+    onSubmit: () => void;
     cart: CartItem[];
     onRemove: (id: string) => void;
     onUpdateQuantity: (id: string, delta: number) => void;
@@ -18,12 +19,13 @@ interface CartDrawerProps {
 export function CartDrawer({
                                isOpen,
                                onClose,
+                               onSubmit,
                                cart,
                                onRemove,
                                onUpdateQuantity
                            }: CartDrawerProps) {
 
-    const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<bookingType>({
+    const { register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<bookingInputType, unknown, bookingOutputType>({
         resolver: zodResolver(addBookingValidator)
     })
 
@@ -32,13 +34,14 @@ export function CartDrawer({
         setValue("items", formattedItems);
     }, [cart, setValue]);
 
-    const startDate = watch("startDate");
-    const endDate = watch("endDate");
+    const startDate = watch("startDate") as Date;
+    const endDate = watch("endDate") as Date;
 
     const { mutate, isPending } = trpc.addBooking.useMutation({
         onSuccess(){
             toast.success("Buchung wurde eingereicht")
             onClose()
+            onSubmit()
             reset()
         },
         onError(){
@@ -49,6 +52,7 @@ export function CartDrawer({
     if (!isOpen) return null;
 
     const calculateTotal = () => {
+        console.log(startDate + " " + endDate)
         if (!startDate || !endDate) return 0;
         const start = new Date(startDate);
         const end = new Date(endDate);
@@ -59,7 +63,7 @@ export function CartDrawer({
         return dailyTotal * diffDays;
     };
 
-    const onSubmit = (booking: bookingType) => {
+    const onFormSubmit = (booking: bookingOutputType) => {
         if (cart.length === 0) {
             toast.error('Dein Rucksack ist leer!');
             return;
@@ -69,7 +73,6 @@ export function CartDrawer({
             return;
         }
         mutate(booking)
-        reset()
     };
 
     return (
@@ -123,9 +126,8 @@ export function CartDrawer({
 
                 {cart.length > 0 && (
                     <div className="p-4 border-t border-stone-100 bg-stone-50">
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
 
-                            {/* Items are handled via useEffect/setValue, but checking errors here is good */}
                             {errors.items && (
                                 <p className="text-red-500 text-xs">{errors.items.message}</p>
                             )}
@@ -137,7 +139,7 @@ export function CartDrawer({
                                     <input
                                         type="date"
                                         className={`w-full rounded-md shadow-sm text-sm p-2 border ${errors.startDate ? 'border-red-500' : 'border-stone-200'}`}
-                                        {...register("startDate")}
+                                        {...register("startDate", {valueAsDate: true})}
                                     />
                                     {errors.startDate && (
                                         <p className="text-red-500 text-xs mt-1">{errors.startDate.message}</p>
@@ -149,7 +151,7 @@ export function CartDrawer({
                                     <input
                                         type="date"
                                         className={`w-full rounded-md shadow-sm text-sm p-2 border ${errors.endDate ? 'border-red-500' : 'border-stone-200'}`}
-                                        {...register("endDate")}
+                                        {...register("endDate", {valueAsDate: true})}
                                     />
                                     {errors.endDate && (
                                         <p className="text-red-500 text-xs mt-1">{errors.endDate.message}</p>

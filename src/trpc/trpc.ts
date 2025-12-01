@@ -1,5 +1,6 @@
 import {auth} from "@/lib/auth";
 import { TRPCError, initTRPC } from "@trpc/server";
+import {transformer} from "@/trpc/transformer"
 
 const t = initTRPC.create();
 const middleware = t.middleware;

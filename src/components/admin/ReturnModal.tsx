@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { Booking, BrokenItemRecord } from '@/types';
+import {inferRouterOutputs} from "@trpc/server";
+import {AppRouter} from "@/trpc";
+
+type RouterOutputs = inferRouterOutputs<AppRouter>;
+type BookingWithDetails = RouterOutputs["getAllBookings"][number];
 
 interface ReturnModalProps {
-    booking: Booking;
+    booking: BookingWithDetails;
     onClose: () => void;
     onConfirm: (bookingId: string, brokenList: BrokenItemRecord[], totalCost: number, billNote: string) => void;
 }
@@ -25,8 +30,8 @@ export function ReturnModal({ booking, onClose, onConfirm }: ReturnModalProps) {
                 const cost = brokenQty * cartItem.replacementCost;
                 fine += cost;
                 brokenList.push({
-                    itemId: cartItem.id,
-                    name: cartItem.name,
+                    itemId: cartItem.item.id,
+                    name: cartItem.item.name,
                     count: brokenQty,
                     cost: cost
                 });
@@ -48,7 +53,7 @@ export function ReturnModal({ booking, onClose, onConfirm }: ReturnModalProps) {
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
                 <div className="p-6 border-b border-stone-100">
-                    <h2 className="text-xl font-bold text-stone-800">Rückgabe Verarbeiten: {booking.userName}</h2>
+                    <h2 className="text-xl font-bold text-stone-800">Rückgabe Verarbeiten: {booking.user.name}</h2>
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -56,11 +61,11 @@ export function ReturnModal({ booking, onClose, onConfirm }: ReturnModalProps) {
                         <h4 className="font-bold text-stone-600 text-sm uppercase mb-3">Material Inspizieren</h4>
                         <div className="space-y-3">
                             {booking.items.map(item => (
-                                <div key={item.id} className="flex justify-between items-center bg-stone-50 p-3 rounded-lg border border-stone-100">
+                                <div key={item.item.id} className="flex justify-between items-center bg-stone-50 p-3 rounded-lg border border-stone-100">
                                     <div className="flex items-center gap-3">
-                                        <img src={item.imageUrl} className="w-12 h-12 rounded bg-white" />
+                                        <img src={item.item.imageUrl} className="w-12 h-12 rounded bg-white" />
                                         <div>
-                                            <p className="font-medium text-stone-800">{item.name}</p>
+                                            <p className="font-medium text-stone-800">{item.item.name}</p>
                                             <p className="text-xs text-stone-500">Ersetzungs Kosten: CHF {item.replacementCost}</p>
                                         </div>
                                     </div>
