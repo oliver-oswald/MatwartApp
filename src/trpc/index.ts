@@ -269,6 +269,53 @@ export const appRouter = router({
                 return {status: "OK"};
             });
         }),
+
+    getAllUsers: adminProcedure
+        .query(async () => {
+            return db.user.findMany({
+                orderBy: { name: 'asc' },
+                // We don't need to return passwords
+                select: { id: true, name: true, email: true, role: true, image: true }
+            });
+        }),
+
+    updateUserRole: adminProcedure
+        .input(z.object({
+            userId: z.string(),
+            role: z.enum(["USER", "ADMIN"])
+        }))
+        .mutation(async ({ input, ctx }) => {
+            const { userId, role } = input;
+
+            // Safety: Prevent changing your own role
+            if (ctx.user.id === userId) {
+                throw new TRPCError({ code: "FORBIDDEN", message: "You cannot change your own role." });
+            }
+
+            await db.user.update({
+                where: { id: userId },
+                data: { role }
+            });
+
+            return { status: "OK", newRole: role };
+        }),
+
+    deleteUser: adminProcedure
+        .input(z.object({ userId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const { userId } = input;
+
+            // Safety: Prevent deleting yourself
+            if (ctx.user.id === userId) {
+                throw new TRPCError({ code: "FORBIDDEN", message: "You cannot delete your own account." });
+            }
+
+            await db.user.delete({
+                where: { id: userId }
+            });
+
+            return { status: "OK" };
+        }),
 })
 
 export type AppRouter = typeof appRouter

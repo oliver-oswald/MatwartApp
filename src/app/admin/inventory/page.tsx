@@ -1,3 +1,5 @@
+"use client"
+
 import React from 'react';
 import { Categories } from '@/types';
 import { CATEGORIES } from '@/constants';
@@ -8,7 +10,7 @@ import {ItemFormData, itemFormSchema} from "@/lib/validators/item";
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
 
-export function InventoryManager() {
+export default function Page() {
     const utils = trpc.useUtils();
 
     console.log("fire")
