@@ -1,16 +1,18 @@
+"use client"
+
 import React, { useState } from 'react';
 import { BookingStatus, BrokenItemRecord, Booking } from '@/types';
 import { CalendarCheck, PackageOpen, CheckSquare, Loader2 } from 'lucide-react';
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
-import { ReturnModal } from './ReturnModal';
+import { ReturnModal } from '@/components/admin/ReturnModal';
 import {AppRouter} from "@/trpc";
 import {inferRouterOutputs} from "@trpc/server";
 
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type BookingWithDetails = RouterOutputs["getAllBookings"][number];
 
-export function BookingManager() {
+export default function Page() {
     const utils = trpc.useUtils();
 
     const [loadingId, setLoadingId] = useState<string | null>(null);
