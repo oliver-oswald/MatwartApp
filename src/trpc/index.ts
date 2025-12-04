@@ -109,7 +109,8 @@ export const appRouter = router({
                     bookingItemsData.push({
                         itemId: dbItem.id,
                         quantity: reqItem.quantity,
-                        pricePerDay: dbItem.pricePerDay, // Snapshot price at time of booking
+                        originalQuantity: reqItem.quantity,
+                        pricePerDay: dbItem.pricePerDay,
                         replacementCost: dbItem.replacementCost,
                     });
                 }
@@ -130,6 +131,22 @@ export const appRouter = router({
                 return {status: "OK", bookingId: newBooking.id};
             });
         }),
+
+    getUserBookings: privateProcedure
+        .query(async ({ ctx }) => {
+            return db.booking.findMany({
+                where: {
+                    userId: ctx.user.id
+                },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    items: {
+                        include: { item: true }
+                    }
+                }
+            });
+        }),
+
     updateBookingStatus: adminProcedure
         .input(z.object({
             id: z.string(),
@@ -287,7 +304,6 @@ export const appRouter = router({
         .mutation(async ({ input, ctx }) => {
             const { userId, role } = input;
 
-            // Safety: Prevent changing your own role
             if (ctx.user.id === userId) {
                 throw new TRPCError({ code: "FORBIDDEN", message: "You cannot change your own role." });
             }
