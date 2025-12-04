@@ -109,7 +109,8 @@ export const appRouter = router({
                     bookingItemsData.push({
                         itemId: dbItem.id,
                         quantity: reqItem.quantity,
-                        pricePerDay: dbItem.pricePerDay, // Snapshot price at time of booking
+                        originalQuantity: reqItem.quantity,
+                        pricePerDay: dbItem.pricePerDay,
                         replacementCost: dbItem.replacementCost,
                     });
                 }
@@ -130,6 +131,22 @@ export const appRouter = router({
                 return {status: "OK", bookingId: newBooking.id};
             });
         }),
+
+    getUserBookings: privateProcedure
+        .query(async ({ ctx }) => {
+            return db.booking.findMany({
+                where: {
+                    userId: ctx.user.id
+                },
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    items: {
+                        include: { item: true }
+                    }
+                }
+            });
+        }),
+
     updateBookingStatus: adminProcedure
         .input(z.object({
             id: z.string(),
@@ -194,6 +211,75 @@ export const appRouter = router({
                 return {status: "OK", newStatus};
             });
         }),
+    modifyAndApproveBooking: adminProcedure
+        .input(z.object({
+            bookingId: z.string(),
+            adminNotes: z.string().min(1, "Ein Grund wird benötigt."),
+            items: z.array(z.object({
+                bookingItemId: z.string(),
+                newQuantity: z.number().min(0)
+            }))
+        }))
+        .mutation(async ({ input }) => {
+            const { bookingId, adminNotes, items: newItemsConfig } = input;
+
+            return await db.$transaction(async (tx) => {
+                const booking = await tx.booking.findUnique({
+                    where: { id: bookingId },
+                    include: { items: true }
+                });
+
+                if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
+
+                const diffTime = Math.abs(booking.endDate.getTime() - booking.startDate.getTime());
+                const durationInDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
+                let newTotalCost = 0;
+
+                for (const config of newItemsConfig) {
+                    const currentBookingItem = booking.items.find(i => i.id === config.bookingItemId);
+                    if (!currentBookingItem) continue;
+
+                    const oldQty = currentBookingItem.quantity;
+                    const newQty = config.newQuantity;
+
+                    const stockDiff = oldQty - newQty;
+
+                    if (stockDiff !== 0) {
+                        if (stockDiff < 0) {
+                            const itemInDb = await tx.item.findUnique({ where: { id: currentBookingItem.itemId }});
+                            if (!itemInDb || itemInDb.availableStock < Math.abs(stockDiff)) {
+                                throw new TRPCError({ code: "CONFLICT", message: `Not enough stock to increase ${currentBookingItem.itemId}`});
+                            }
+                        }
+
+                        await tx.item.update({
+                            where: { id: currentBookingItem.itemId },
+                            data: { availableStock: { increment: stockDiff } }
+                        });
+                    }
+
+                    await tx.bookingItem.update({
+                        where: { id: config.bookingItemId },
+                        data: { quantity: newQty }
+                    });
+
+                    newTotalCost += (currentBookingItem.pricePerDay * newQty * durationInDays);
+                }
+
+                await tx.booking.update({
+                    where: { id: bookingId },
+                    data: {
+                        status: "AKZEPTIERT",
+                        totalRentalCost: newTotalCost,
+                        adminNotes: adminNotes
+                    }
+                });
+
+                return { status: "OK" };
+            });
+        }),
+    
     completeReturn: adminProcedure
         .input(z.object({
             bookingId: z.string(),
@@ -287,7 +373,6 @@ export const appRouter = router({
         .mutation(async ({ input, ctx }) => {
             const { userId, role } = input;
 
-            // Safety: Prevent changing your own role
             if (ctx.user.id === userId) {
                 throw new TRPCError({ code: "FORBIDDEN", message: "You cannot change your own role." });
             }

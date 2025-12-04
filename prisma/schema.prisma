@@ -125,9 +125,10 @@ model BookingItem {
   item      Item    @relation(fields: [itemId], references: [id])
   itemId    String
 
-  quantity        Int
-  pricePerDay     Float
-  replacementCost Float
+  quantity         Int
+  originalQuantity Int?
+  pricePerDay      Float
+  replacementCost  Float
 }
 
 model BrokenItemRecord {

@@ -3,7 +3,7 @@
 import React from 'react';
 import {usePathname} from "next/navigation";
 import Link from "next/link";
-import {Button} from "@heroui/react";
+import {Button, Tab, Tabs} from "@heroui/react";
 import {User} from "lucide-react";
 
 export default function AdminDashboard({children}: Readonly<{
@@ -16,24 +16,20 @@ export default function AdminDashboard({children}: Readonly<{
             {/* Header / Tabs */}
             <div className="bg-white border-b border-stone-200 px-6 py-4 flex items-center gap-4">
                 <h2 className="text-xl font-bold text-stone-800">Admin Console</h2>
-                <div className="flex bg-stone-100 p-1 rounded-lg">
-                    <Link
+                <Tabs className="flex bg-stone-100 p-1 rounded-lg" color="primary" selectedKey={pathname}>
+                    <Tab
+                        key="/admin/bookings"
                         href="/admin/bookings"
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                            pathname.includes('bookings') ? 'bg-white text-forest-700 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-                        }`}
+                        title="Ausleihen"
                     >
-                        Ausleihen
-                    </Link>
-                    <Link
+                    </Tab>
+                    <Tab
+                        key="/admin/inventory"
                         href="/admin/inventory"
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                            pathname.includes('inventory') ? 'bg-white text-forest-700 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-                        }`}
+                        title="Inventar"
                     >
-                        Inventar
-                    </Link>
-                </div>
+                    </Tab>
+                </Tabs>
                 <Link href="/admin/users" className="ml-auto">
                 <Button isIconOnly variant="bordered">
                     <User></User>

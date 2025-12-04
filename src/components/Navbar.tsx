@@ -25,7 +25,8 @@ export default function Navbar() {
                         <DropdownMenu>
                             <DropdownItem key="admin" href="/admin/bookings">Admin</DropdownItem>
                             <DropdownItem key="catalog" href="/browse">Katalog</DropdownItem>
-                            <DropdownItem key="logout" color="secondary" onClick={async () => {
+                            <DropdownItem key="myBookings" href="/bookings">Meine Ausleihen</DropdownItem>
+                            <DropdownItem key="logout" color="primary" onClick={async () => {
                                 try {
                                     await signOut();
                                 } catch (_) {
