@@ -5,10 +5,11 @@ import { BookingStatus, BrokenItemRecord } from '@/types';
 import { CalendarCheck, PackageOpen, CheckSquare, Loader2 } from 'lucide-react';
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
-import { Accordion, AccordionItem, Avatar, Chip } from "@heroui/react";
+import { ReturnModal } from '@/components/admin/ReturnModal';
+import { BookingRequestCard } from '@/components/admin/BookingRequestCard'; // <--- Import new component
+import { Chip } from "@heroui/react";
+import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
-import {AppRouter} from "@/trpc";
-import {ReturnModal} from "@/components/admin/ReturnModal";
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type BookingWithDetails = RouterOutputs["getAllBookings"][number];
 
@@ -20,9 +21,23 @@ export default function Page() {
     const { data: bookings, isLoading } = trpc.getAllBookings.useQuery();
 
     const updateStatusMutation = trpc.updateBookingStatus.useMutation({
-        onMutate: (variables) => setLoadingId(variables.id),
+        onMutate: (vars) => setLoadingId(vars.id),
         onSuccess: (data) => {
             toast.success(`Status: ${data.newStatus}`);
+            utils.getAllBookings.invalidate();
+            utils.getAllItems.invalidate();
+            setLoadingId(null);
+        },
+        onError: (err) => {
+            toast.error(err.message);
+            setLoadingId(null);
+        }
+    });
+
+    const modifyMutation = trpc.modifyAndApproveBooking.useMutation({
+        onMutate: (vars) => setLoadingId(vars.bookingId),
+        onSuccess: () => {
+            toast.success("Buchung angepasst und bestätigt!");
             utils.getAllBookings.invalidate();
             utils.getAllItems.invalidate();
             setLoadingId(null);
@@ -45,6 +60,10 @@ export default function Page() {
 
     const handleUpdateStatus = (id: string, status: BookingStatus) => {
         updateStatusMutation.mutate({ id, status });
+    };
+
+    const handleModifyAndApprove = (id: string, notes: string, items: { bookingItemId: string, newQuantity: number }[]) => {
+        modifyMutation.mutate({ bookingId: id, adminNotes: notes, items });
     };
 
     const handleConfirmReturn = (bookingId: string, brokenList: BrokenItemRecord[], totalCost: number, billNote: string) => {
@@ -70,76 +89,13 @@ export default function Page() {
                     )}
 
                     {pendingBookings.map(b => (
-                        <div key={b.id} className="bg-white rounded-lg shadow-sm border border-l-4 border-l-amber-400 overflow-hidden">
-                            <div className="p-4 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-bold text-stone-800 text-lg">{b.user?.name || "Unbekannt"}</p>
-                                        <Chip size="sm" color="warning" variant="flat">Warten</Chip>
-                                    </div>
-                                    <p className="text-sm text-stone-500 mt-1">
-                                        {new Date(b.startDate).toLocaleDateString()} — {new Date(b.endDate).toLocaleDateString()}
-                                    </p>
-                                    <p className="text-sm font-bold text-forest-700 mt-1">
-                                        Total: CHF {b.totalRentalCost.toFixed(2)}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        disabled={loadingId === b.id}
-                                        onClick={() => handleUpdateStatus(b.id, "ABGELEHNT" as BookingStatus)}
-                                        className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                                    >
-                                        Ablehnen
-                                    </button>
-                                    <button
-                                        disabled={loadingId === b.id}
-                                        onClick={() => handleUpdateStatus(b.id, "AKZEPTIERT" as BookingStatus)}
-                                        className="px-4 py-2 text-sm font-bold bg-forest-600 text-white rounded-lg hover:bg-forest-700 shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
-                                    >
-                                        {loadingId === b.id ? <Loader2 className="animate-spin" size={16} /> : "Bestätigen"}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* HeroUI Accordion for Items */}
-                            <div className="border-t border-stone-100 px-2">
-                                <Accordion isCompact>
-                                    <AccordionItem
-                                        key="1"
-                                        aria-label="Items"
-                                        title={
-                                            <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                                                {b.items.length} Gegenstände anzeigen
-                                            </span>
-                                        }
-                                    >
-                                        <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {b.items.map((bookingItem) => (
-                                                <div key={bookingItem.id} className="flex items-center gap-3 bg-stone-50 p-2 rounded-lg border border-stone-100">
-                                                    <Avatar
-                                                        src={bookingItem.item.imageUrl}
-                                                        radius="sm"
-                                                        size="md"
-                                                        className="bg-white"
-                                                    />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-semibold text-stone-800 line-clamp-1">
-                                                            {bookingItem.item.name}
-                                                        </span>
-                                                        <div className="flex gap-2 text-xs text-stone-500">
-                                                            <span>Menge: <span className="font-mono font-bold text-stone-700">{bookingItem.quantity}x</span></span>
-                                                            <span>|</span>
-                                                            <span>Einzel: CHF {bookingItem.pricePerDay}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </AccordionItem>
-                                </Accordion>
-                            </div>
-                        </div>
+                        <BookingRequestCard
+                            key={b.id}
+                            booking={b}
+                            onUpdateStatus={handleUpdateStatus}
+                            onModifyAndApprove={handleModifyAndApprove}
+                            isProcessing={loadingId === b.id}
+                        />
                     ))}
                 </div>
             </section>
