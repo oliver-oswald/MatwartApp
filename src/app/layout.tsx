@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar"
 import Providers from "@/components/Providers";
+import {auth} from "@/lib/auth";
+import {Role} from "@prisma/enums";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
@@ -25,17 +27,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
+  const session = await auth()
+
   return (
     <html lang="en">
     <body className="bg-earth-50 text-earth-900 antialiased h-screen overflow-hidden">
     <Providers>
     <div className="flex flex-col h-screen bg-earth-50 font-sans">
-        <Navbar />
+        <Navbar isAdmin={session?.user.role === Role.ADMIN} />
         <main className="flex-1 overflow-hidden relative">
             {children}
         </main>

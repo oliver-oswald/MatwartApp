@@ -223,13 +223,13 @@ export const appRouter = router({
         .mutation(async ({ input }) => {
             const { bookingId, adminNotes, items: newItemsConfig } = input;
 
-            return await db.$transaction(async (tx) => {
+            return db.$transaction(async (tx) => {
                 const booking = await tx.booking.findUnique({
-                    where: { id: bookingId },
-                    include: { items: true }
+                    where: {id: bookingId},
+                    include: {items: true}
                 });
 
-                if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
+                if (!booking) throw new TRPCError({code: "NOT_FOUND"});
 
                 const diffTime = Math.abs(booking.endDate.getTime() - booking.startDate.getTime());
                 const durationInDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
@@ -247,28 +247,31 @@ export const appRouter = router({
 
                     if (stockDiff !== 0) {
                         if (stockDiff < 0) {
-                            const itemInDb = await tx.item.findUnique({ where: { id: currentBookingItem.itemId }});
+                            const itemInDb = await tx.item.findUnique({where: {id: currentBookingItem.itemId}});
                             if (!itemInDb || itemInDb.availableStock < Math.abs(stockDiff)) {
-                                throw new TRPCError({ code: "CONFLICT", message: `Not enough stock to increase ${currentBookingItem.itemId}`});
+                                throw new TRPCError({
+                                    code: "CONFLICT",
+                                    message: `Not enough stock to increase ${currentBookingItem.itemId}`
+                                });
                             }
                         }
 
                         await tx.item.update({
-                            where: { id: currentBookingItem.itemId },
-                            data: { availableStock: { increment: stockDiff } }
+                            where: {id: currentBookingItem.itemId},
+                            data: {availableStock: {increment: stockDiff}}
                         });
                     }
 
                     await tx.bookingItem.update({
-                        where: { id: config.bookingItemId },
-                        data: { quantity: newQty }
+                        where: {id: config.bookingItemId},
+                        data: {quantity: newQty}
                     });
 
                     newTotalCost += (currentBookingItem.pricePerDay * newQty * durationInDays);
                 }
 
                 await tx.booking.update({
-                    where: { id: bookingId },
+                    where: {id: bookingId},
                     data: {
                         status: "AKZEPTIERT",
                         totalRentalCost: newTotalCost,
@@ -276,7 +279,7 @@ export const appRouter = router({
                     }
                 });
 
-                return { status: "OK" };
+                return {status: "OK"};
             });
         }),
     

@@ -5,8 +5,8 @@ import Link from "next/link";
 import {Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button} from "@heroui/react";
 import {signOut} from "next-auth/react";
 import {toast} from "react-hot-toast";
-export default function Navbar() {
 
+export default function Navbar({isAdmin}: {isAdmin: boolean}) {
     return <nav className="flex-none bg-forest-900 text-white shadow-md z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -23,9 +23,9 @@ export default function Navbar() {
                             </Button>
                         </DropdownTrigger>
                         <DropdownMenu>
-                            <DropdownItem key="admin" href="/admin/bookings">Admin</DropdownItem>
+                            {isAdmin ? <DropdownItem key="admin" href="/admin/bookings">Admin</DropdownItem> : null}
                             <DropdownItem key="catalog" href="/browse">Katalog</DropdownItem>
-                            <DropdownItem key="myBookings" href="/bookings">Meine Ausleihen</DropdownItem>
+                            <DropdownItem key="myBookings" href="/bookings" showDivider>Meine Ausleihen</DropdownItem>
                             <DropdownItem key="logout" color="primary" onClick={async () => {
                                 try {
                                     await signOut();

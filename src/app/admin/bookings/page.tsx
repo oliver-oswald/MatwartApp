@@ -7,7 +7,7 @@ import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
 import { ReturnModal } from '@/components/admin/ReturnModal';
 import { BookingRequestCard } from '@/components/admin/BookingRequestCard'; // <--- Import new component
-import { Chip } from "@heroui/react";
+import {Accordion, AccordionItem, Avatar, Chip} from "@heroui/react";
 import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
 type RouterOutputs = inferRouterOutputs<AppRouter>;
@@ -106,11 +106,14 @@ export default function Page() {
                 <div className="grid gap-4">
                     {activeBookings.length === 0 && <p className="text-stone-400 italic text-sm">Keine aktiven Ausleihen.</p>}
                     {activeBookings.map(b => (
-                        <div key={b.id} className="bg-white p-4 rounded-lg shadow-sm border border-l-4 border-l-blue-400 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <div key={b.id} className="bg-white rounded-lg shadow-sm border border-l-4 border-l-blue-400 overflow-hidden">
+                        <div
+                             className="p-4 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
                             <div>
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold text-stone-800">{b.user?.name}</p>
-                                    <Chip size="sm" color={b.status === "AKZEPTIERT" ? "warning" : "primary"} variant="flat">
+                                    <Chip size="sm" color={b.status === "AKZEPTIERT" ? "warning" : "primary"}
+                                          variant="flat">
                                         {b.status}
                                     </Chip>
                                 </div>
@@ -118,30 +121,75 @@ export default function Page() {
                             </div>
                             <div className="flex gap-2">
                                 {b.status === "AKZEPTIERT" && (
-                                    <button onClick={() => handleUpdateStatus(b.id, "AKTIV" as BookingStatus)} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <button onClick={() => handleUpdateStatus(b.id, "AKTIV" as BookingStatus)}
+                                            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                                         Abgeholt
                                     </button>
                                 )}
                                 {b.status === "AKTIV" && (
-                                    <button onClick={() => setSelectedBooking(b)} className="px-4 py-2 text-sm bg-stone-800 text-white rounded-lg hover:bg-stone-900">
+                                    <button onClick={() => setSelectedBooking(b)}
+                                            className="px-4 py-2 text-sm bg-stone-800 text-white rounded-lg hover:bg-stone-900">
                                         Rückgabe
                                     </button>
                                 )}
                             </div>
                         </div>
+                            <div className="border-t border-stone-100 px-2">
+                                <Accordion isCompact>
+                                    <AccordionItem
+                                        key="1"
+                                        aria-label="Items"
+                                        title={
+                                            <span
+                                                className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                                                {b.items.length} Gegenstände anzeigen
+                                            </span>
+                                        }
+                                    >
+                                        <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {b.items.map((bookingItem) => (
+                                                <div key={bookingItem.id}
+                                                     className="flex items-center gap-3 bg-stone-50 p-2 rounded-lg border border-stone-100">
+                                                    <Avatar
+                                                        src={bookingItem.item.imageUrl}
+                                                        radius="sm"
+                                                        size="md"
+                                                        className="bg-white"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span
+                                                            className="text-sm font-semibold text-stone-800 line-clamp-1">
+                                                            {bookingItem.item.name}
+                                                        </span>
+                                                        <div className="flex gap-2 text-xs text-stone-500">
+                                                <span>Menge: <span
+                                                    className="font-mono font-bold text-stone-700">{bookingItem.quantity}x</span></span>
+                                                            <span>|</span>
+                                                            <span>Einzel: CHF {bookingItem.pricePerDay}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </AccordionItem>
+                                </Accordion>
+                            </div>
+    </div>
                     ))}
                 </div>
             </section>
 
             <section className="opacity-75">
                 <h3 className="text-lg font-bold text-stone-700 mb-3 flex items-center gap-2">
-                    <CheckSquare className="text-green-500" /> Vorherige Ausleihen
+                    <CheckSquare className="text-green-500"/> Vorherige Ausleihen
                 </h3>
                 <div className="space-y-2">
                     {completedBookings.map(b => (
-                        <div key={b.id} className="bg-white p-3 rounded-lg border border-stone-100 flex justify-between text-sm">
+                        <div key={b.id}
+                             className="bg-white p-3 rounded-lg border border-stone-100 flex justify-between text-sm">
                             <span>{b.user?.name}</span>
-                            <span className="font-mono font-bold text-green-700">CHF {b.finalBillAmount?.toFixed(2)}</span>
+                            <span
+                                className="font-mono font-bold text-green-700">CHF {b.finalBillAmount?.toFixed(2)}</span>
                         </div>
                     ))}
                 </div>
