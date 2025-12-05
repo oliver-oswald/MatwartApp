@@ -129,6 +129,17 @@ model BookingItem {
   originalQuantity Int?
   pricePerDay      Float
   replacementCost  Float
+  damageReports    DamageReport[]
+}
+
+model DamageReport {
+  id            String      @id @default(uuid())
+  bookingItemId String
+  bookingItem   BookingItem @relation(fields: [bookingItemId], references: [id])
+
+  description String
+  imageUrl    String
+  createdAt   DateTime @default(now())
 }
 
 model BrokenItemRecord {

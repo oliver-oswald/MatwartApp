@@ -2,14 +2,16 @@
 
 import React, { useState } from 'react';
 import { BookingStatus, BrokenItemRecord } from '@/types';
-import { CalendarCheck, PackageOpen, CheckSquare, Loader2 } from 'lucide-react';
+import { CalendarCheck, PackageOpen, CheckSquare, Loader2, AlertTriangle, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
 import { ReturnModal } from '@/components/admin/ReturnModal';
-import { BookingRequestCard } from '@/components/admin/BookingRequestCard'; // <--- Import new component
-import {Accordion, AccordionItem, Avatar, Chip} from "@heroui/react";
+import { BookingRequestCard } from '@/components/admin/BookingRequestCard';
+import { Accordion, AccordionItem, Avatar, Button, Chip, Tooltip, Link } from "@heroui/react";
 import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
+
+// Ensure your types are picking up the new 'damageReports' include from the backend
 type RouterOutputs = inferRouterOutputs<AppRouter>;
 type BookingWithDetails = RouterOutputs["getAllBookings"][number];
 
@@ -79,6 +81,7 @@ export default function Page() {
 
     return (
         <div className="space-y-8">
+            {/* PENDING */}
             <section>
                 <h3 className="text-lg font-bold text-stone-700 mb-3 flex items-center gap-2">
                     <CalendarCheck className="text-amber-500" /> Warten auf Bestätigung
@@ -99,97 +102,135 @@ export default function Page() {
                     ))}
                 </div>
             </section>
+
+            {/* ACTIVE */}
             <section>
                 <h3 className="text-lg font-bold text-stone-700 mb-3 flex items-center gap-2">
                     <PackageOpen className="text-blue-500" /> Aktive Ausleihen
                 </h3>
                 <div className="grid gap-4">
                     {activeBookings.length === 0 && <p className="text-stone-400 italic text-sm">Keine aktiven Ausleihen.</p>}
-                    {activeBookings.map(b => (
-                        <div key={b.id} className="bg-white rounded-lg shadow-sm border border-l-4 border-l-blue-400 overflow-hidden">
-                        <div
-                             className="p-4 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <p className="font-bold text-stone-800">{b.user?.name}</p>
-                                    <Chip size="sm" color={b.status === "AKZEPTIERT" ? "warning" : "primary"}
-                                          variant="flat">
-                                        {b.status}
-                                    </Chip>
-                                </div>
-                                <p className="text-sm text-stone-500 mt-1">Rückgabe: {new Date(b.endDate).toLocaleDateString()}</p>
-                            </div>
-                            <div className="flex gap-2">
-                                {b.status === "AKZEPTIERT" && (
-                                    <button onClick={() => handleUpdateStatus(b.id, "AKTIV" as BookingStatus)}
-                                            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                        Abgeholt
-                                    </button>
-                                )}
-                                {b.status === "AKTIV" && (
-                                    <button onClick={() => setSelectedBooking(b)}
-                                            className="px-4 py-2 text-sm bg-stone-800 text-white rounded-lg hover:bg-stone-900">
-                                        Rückgabe
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                            <div className="border-t border-stone-100 px-2">
-                                <Accordion isCompact>
-                                    <AccordionItem
-                                        key="1"
-                                        aria-label="Items"
-                                        title={
-                                            <span
-                                                className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                                                {b.items.length} Gegenstände anzeigen
-                                            </span>
-                                        }
-                                    >
-                                        <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {b.items.map((bookingItem) => (
-                                                <div key={bookingItem.id}
-                                                     className="flex items-center gap-3 bg-stone-50 p-2 rounded-lg border border-stone-100">
-                                                    <Avatar
-                                                        src={bookingItem.item.imageUrl}
-                                                        radius="sm"
-                                                        size="md"
-                                                        className="bg-white"
-                                                    />
-                                                    <div className="flex flex-col">
-                                                        <span
-                                                            className="text-sm font-semibold text-stone-800 line-clamp-1">
-                                                            {bookingItem.item.name}
-                                                        </span>
-                                                        <div className="flex gap-2 text-xs text-stone-500">
-                                                <span>Menge: <span
-                                                    className="font-mono font-bold text-stone-700">{bookingItem.quantity}x</span></span>
-                                                            <span>|</span>
-                                                            <span>Einzel: CHF {bookingItem.pricePerDay}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
+                    {activeBookings.map(b => {
+                        // Check if any item in this booking has damage reports
+                        const hasAnyDamage = b.items.some(i => i.damageReports && i.damageReports.length > 0);
+
+                        return (
+                            <div key={b.id} className={`bg-white rounded-lg shadow-sm border ${hasAnyDamage ? 'border-l-4 border-l-red-500 border-red-200' : 'border-l-4 border-l-blue-400 border-stone-100'} overflow-hidden`}>
+                                <div className="p-4 flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-bold text-stone-800">{b.user?.name}</p>
+                                            <Chip size="sm" color={b.status === "AKZEPTIERT" ? "warning" : "primary"} variant="flat">
+                                                {b.status}
+                                            </Chip>
+                                            {hasAnyDamage && (
+                                                <Chip size="sm" color="danger" variant="solid" startContent={<AlertTriangle size={12}/>}>
+                                                    Defekt gemeldet
+                                                </Chip>
+                                            )}
                                         </div>
-                                    </AccordionItem>
-                                </Accordion>
+                                        <p className="text-sm text-stone-500 mt-1">Rückgabe: {new Date(b.endDate).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {b.status === "AKZEPTIERT" && (
+                                            <Button onPress={() => handleUpdateStatus(b.id, "AKTIV" as BookingStatus)} className="bg-blue-600 text-white">
+                                                Abgeholt
+                                            </Button>
+                                        )}
+                                        {b.status === "AKTIV" && (
+                                            <Button onPress={() => setSelectedBooking(b)} className="bg-stone-800 text-white">
+                                                Rückgabe
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="border-t border-stone-100 px-2">
+                                    <Accordion isCompact>
+                                        <AccordionItem
+                                            key="1"
+                                            aria-label="Items"
+                                            title={
+                                                <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                                                    {b.items.length} Gegenstände anzeigen
+                                                </span>
+                                            }
+                                        >
+                                            <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {b.items.map((bookingItem) => {
+                                                    const reports = bookingItem.damageReports || [];
+                                                    const isBroken = reports.length > 0;
+
+                                                    return (
+                                                        <div key={bookingItem.id}
+                                                             className={`flex flex-col p-2 rounded-lg border ${isBroken ? 'bg-red-50 border-red-200' : 'bg-stone-50 border-stone-100'}`}>
+
+                                                            {/* Item Header */}
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar
+                                                                    src={bookingItem.item.imageUrl}
+                                                                    radius="sm"
+                                                                    size="md"
+                                                                    className="bg-white"
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-semibold text-stone-800 line-clamp-1">
+                                                                        {bookingItem.item.name}
+                                                                    </span>
+                                                                    <div className="flex gap-2 text-xs text-stone-500">
+                                                                        <span>Menge: <span className="font-mono font-bold text-stone-700">{bookingItem.quantity}x</span></span>
+                                                                        <span>|</span>
+                                                                        <span>Einzel: CHF {bookingItem.pricePerDay}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {isBroken && (
+                                                                <div className="mt-2 pt-2 border-t border-red-100">
+                                                                    <p className="text-[10px] font-bold text-red-600 uppercase mb-1 flex items-center gap-1">
+                                                                        <AlertTriangle size={10}/> Meldung vom Nutzer:
+                                                                    </p>
+                                                                    {reports.map((report) => (
+                                                                        <div key={report.id} className="bg-white p-2 rounded border border-red-100 mb-1">
+                                                                            <p className="text-xs text-stone-700 italic mb-1">&#34;{report.description}&#34;</p>
+                                                                            {report.imageUrl && (
+                                                                                <Link
+                                                                                    href={report.imageUrl}
+                                                                                    isExternal
+                                                                                    showAnchorIcon
+                                                                                    anchorIcon={<ImageIcon size={12} className="ml-1" />}
+                                                                                    size="sm"
+                                                                                    color="danger"
+                                                                                >
+                                                                                    Foto ansehen
+                                                                                </Link>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </AccordionItem>
+                                    </Accordion>
+                                </div>
                             </div>
-    </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </section>
 
+            {/* COMPLETED */}
             <section className="opacity-75">
                 <h3 className="text-lg font-bold text-stone-700 mb-3 flex items-center gap-2">
-                    <CheckSquare className="text-green-500"/> Vorherige Ausleihen
+                    <CheckSquare className="text-green-500" /> Vorherige Ausleihen
                 </h3>
                 <div className="space-y-2">
                     {completedBookings.map(b => (
-                        <div key={b.id}
-                             className="bg-white p-3 rounded-lg border border-stone-100 flex justify-between text-sm">
+                        <div key={b.id} className="bg-white p-3 rounded-lg border border-stone-100 flex justify-between text-sm">
                             <span>{b.user?.name}</span>
-                            <span
-                                className="font-mono font-bold text-green-700">CHF {b.finalBillAmount?.toFixed(2)}</span>
+                            <span className="font-mono font-bold text-green-700">CHF {b.finalBillAmount?.toFixed(2)}</span>
                         </div>
                     ))}
                 </div>

@@ -41,7 +41,7 @@ export default async function RootLayout({
     <Providers>
     <div className="flex flex-col h-screen bg-earth-50 font-sans">
         <Navbar isAdmin={session?.user.role === Role.ADMIN} />
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-auto relative">
             {children}
         </main>
     </div>
