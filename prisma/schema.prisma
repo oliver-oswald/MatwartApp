@@ -116,6 +116,19 @@ model Booking {
 
   items       BookingItem[]
   brokenItems BrokenItemRecord[]
+  pickupSlots PickupSlot[]
+}
+
+model PickupSlot {
+  id        String  @id @default(uuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  start DateTime
+  end   DateTime
+
+  isConfirmed Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
 
 model BookingItem {
@@ -129,6 +142,17 @@ model BookingItem {
   originalQuantity Int?
   pricePerDay      Float
   replacementCost  Float
+  damageReports    DamageReport[]
+}
+
+model DamageReport {
+  id            String      @id @default(uuid())
+  bookingItemId String
+  bookingItem   BookingItem @relation(fields: [bookingItemId], references: [id])
+
+  description String
+  imageUrl    String
+  createdAt   DateTime @default(now())
 }
 
 model BrokenItemRecord {

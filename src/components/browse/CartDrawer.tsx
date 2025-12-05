@@ -7,6 +7,7 @@ import {useForm} from "react-hook-form";
 import {addBookingValidator, bookingInputType, bookingOutputType} from "@/lib/validators/booking";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {trpc} from "@/app/_trpc/client";
+import {useRouter} from "next/navigation";
 interface CartDrawerProps {
     isOpen: boolean;
     onClose: () => void;
@@ -34,6 +35,8 @@ export function CartDrawer({
         setValue("items", formattedItems);
     }, [cart, setValue]);
 
+    const router = useRouter()
+
     const startDate = watch("startDate") as Date;
     const endDate = watch("endDate") as Date;
 
@@ -42,6 +45,7 @@ export function CartDrawer({
             toast.success("Buchung wurde eingereicht")
             onClose()
             onSubmit()
+            router.push("/bookings")
             reset()
         },
         onError(){
@@ -135,7 +139,7 @@ export function CartDrawer({
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label
-                                        className="block text-xs font-bold text-stone-500 uppercase mb-1">Abholung</label>
+                                        className="block text-xs font-bold text-stone-500 uppercase mb-1">Von</label>
                                     <input
                                         type="date"
                                         className={`w-full rounded-md shadow-sm text-sm p-2 border ${errors.startDate ? 'border-red-500' : 'border-stone-200'}`}
@@ -147,7 +151,7 @@ export function CartDrawer({
                                 </div>
                                 <div>
                                     <label
-                                        className="block text-xs font-bold text-stone-500 uppercase mb-1">Rückgabe</label>
+                                        className="block text-xs font-bold text-stone-500 uppercase mb-1">Bis</label>
                                     <input
                                         type="date"
                                         className={`w-full rounded-md shadow-sm text-sm p-2 border ${errors.endDate ? 'border-red-500' : 'border-stone-200'}`}

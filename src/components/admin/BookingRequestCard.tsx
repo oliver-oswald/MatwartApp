@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BookingStatus } from '@/types';
 import { Loader2, Save, X } from 'lucide-react';
-import { Avatar, Chip, Input, Textarea, Button } from "@heroui/react";
+import {Avatar, Chip, Input, Textarea, Button, Accordion, AccordionItem} from "@heroui/react";
 import { toast } from "react-hot-toast";
 import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
@@ -66,9 +66,6 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
                         <p className="text-sm font-bold text-forest-700 mt-1">
                             Total: CHF {booking.totalRentalCost.toFixed(2)}
                         </p>
-                        <div className="text-xs text-stone-400 mt-1">
-                            {booking.items.length} Positionen
-                        </div>
                     </div>
 
                     <div className="flex gap-2">
@@ -91,16 +88,56 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
                             onPress={() => onUpdateStatus(booking.id, "AKZEPTIERT" as BookingStatus)}
                             isDisabled={isProcessing}
                         >
-                            {isProcessing ? <Loader2 className="animate-spin" size={16} /> : "Bestätigen"}
+                            {isProcessing ? <Loader2 className="animate-spin" size={16}/> : "Bestätigen"}
                         </Button>
                     </div>
+                </div>
+                <div className="border-t border-stone-100 px-2">
+                    <Accordion isCompact>
+                        <AccordionItem
+                            key="1"
+                            aria-label="Items"
+                            title={
+                                <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
+                                                {booking.items.length} Gegenstände anzeigen
+                                            </span>
+                            }
+                        >
+                            <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {booking.items.map((bookingItem) => (
+                                    <div key={bookingItem.id}
+                                         className="flex items-center gap-3 bg-stone-50 p-2 rounded-lg border border-stone-100">
+                                        <Avatar
+                                            src={bookingItem.item.imageUrl}
+                                            radius="sm"
+                                            size="md"
+                                            className="bg-white"
+                                        />
+                                        <div className="flex flex-col">
+                                                        <span
+                                                            className="text-sm font-semibold text-stone-800 line-clamp-1">
+                                                            {bookingItem.item.name}
+                                                        </span>
+                                            <div className="flex gap-2 text-xs text-stone-500">
+                                                <span>Menge: <span
+                                                    className="font-mono font-bold text-stone-700">{bookingItem.quantity}x</span></span>
+                                                <span>|</span>
+                                                <span>Einzel: CHF {bookingItem.pricePerDay}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </AccordionItem>
+                    </Accordion>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-md border border-l-4 border-l-blue-500 overflow-hidden p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+        <div
+            className="bg-white rounded-lg shadow-md border border-l-4 border-l-blue-500 overflow-hidden p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-stone-100 pb-2">
                 <h4 className="font-bold text-stone-700">Anfrage Bearbeiten</h4>
                 <div className="text-right">
@@ -112,7 +149,7 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
             <div className="space-y-3">
                 {booking.items.map(item => (
                     <div key={item.id} className="flex items-center gap-3">
-                        <Avatar src={item.item.imageUrl} size="sm" radius="sm" />
+                        <Avatar src={item.item.imageUrl} size="sm" radius="sm"/>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{item.item.name}</p>
                             <p className="text-xs text-stone-400">Original: {item.quantity}x</p>
@@ -124,7 +161,7 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
                                 size="sm"
                                 label="Menge"
                                 value={String(quantities[item.id])}
-                                onValueChange={(v) => setQuantities(prev => ({ ...prev, [item.id]: Number(v) }))}
+                                onValueChange={(v) => setQuantities(prev => ({...prev, [item.id]: Number(v)}))}
                             />
                         </div>
                     </div>

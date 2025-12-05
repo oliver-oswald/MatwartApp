@@ -63,9 +63,11 @@ export const appRouter = router({
                 },
                 include: {
                     user: true,
+                    pickupSlots: true,
                     items: {
                         include: {
-                            item: true
+                            item: true,
+                            damageReports: true
                         }
                     }
                 }
@@ -140,11 +142,53 @@ export const appRouter = router({
                 },
                 orderBy: { createdAt: 'desc' },
                 include: {
+                    pickupSlots: true,
                     items: {
-                        include: { item: true }
+                        include: {
+                            item: true,
+                            damageReports: true
+                        }
                     }
                 }
             });
+        }),
+
+    reportDamage: privateProcedure
+        .input(z.object({
+            bookingItemId: z.string(),
+            description: z.string().min(1),
+            imageUrl: z.url()
+        }))
+        .mutation(async ({ ctx, input }) => {
+
+            const bookingItem = await db.bookingItem.findUnique({
+                include: {
+                  booking: true
+                },
+                where: {
+                    id: input.bookingItemId,
+                    booking: {
+                        userId: ctx.userId
+                    }
+                }
+            })
+
+            if (!bookingItem) {
+                throw new TRPCError({
+                    code: "NOT_FOUND",
+                    message: `BookingItem with ID ${input.bookingItemId} not found`,
+                });
+            }
+
+            await db.damageReport.create({
+                data: {
+                    bookingItemId: input.bookingItemId,
+                    description: input.description,
+                    imageUrl: input.imageUrl
+                }
+            });
+
+            return { status: "OK" };
         }),
 
     updateBookingStatus: adminProcedure
@@ -223,13 +267,13 @@ export const appRouter = router({
         .mutation(async ({ input }) => {
             const { bookingId, adminNotes, items: newItemsConfig } = input;
 
-            return await db.$transaction(async (tx) => {
+            return db.$transaction(async (tx) => {
                 const booking = await tx.booking.findUnique({
-                    where: { id: bookingId },
-                    include: { items: true }
+                    where: {id: bookingId},
+                    include: {items: true}
                 });
 
-                if (!booking) throw new TRPCError({ code: "NOT_FOUND" });
+                if (!booking) throw new TRPCError({code: "NOT_FOUND"});
 
                 const diffTime = Math.abs(booking.endDate.getTime() - booking.startDate.getTime());
                 const durationInDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
@@ -240,35 +284,18 @@ export const appRouter = router({
                     const currentBookingItem = booking.items.find(i => i.id === config.bookingItemId);
                     if (!currentBookingItem) continue;
 
-                    const oldQty = currentBookingItem.quantity;
                     const newQty = config.newQuantity;
 
-                    const stockDiff = oldQty - newQty;
-
-                    if (stockDiff !== 0) {
-                        if (stockDiff < 0) {
-                            const itemInDb = await tx.item.findUnique({ where: { id: currentBookingItem.itemId }});
-                            if (!itemInDb || itemInDb.availableStock < Math.abs(stockDiff)) {
-                                throw new TRPCError({ code: "CONFLICT", message: `Not enough stock to increase ${currentBookingItem.itemId}`});
-                            }
-                        }
-
-                        await tx.item.update({
-                            where: { id: currentBookingItem.itemId },
-                            data: { availableStock: { increment: stockDiff } }
-                        });
-                    }
-
                     await tx.bookingItem.update({
-                        where: { id: config.bookingItemId },
-                        data: { quantity: newQty }
+                        where: {id: config.bookingItemId},
+                        data: {quantity: newQty}
                     });
 
                     newTotalCost += (currentBookingItem.pricePerDay * newQty * durationInDays);
                 }
 
                 await tx.booking.update({
-                    where: { id: bookingId },
+                    where: {id: bookingId},
                     data: {
                         status: "AKZEPTIERT",
                         totalRentalCost: newTotalCost,
@@ -276,7 +303,53 @@ export const appRouter = router({
                     }
                 });
 
-                return { status: "OK" };
+                return {status: "OK"};
+            });
+        }),
+
+    proposePickupSlots: privateProcedure
+        .input(z.object({
+            bookingId: z.string(),
+            slots: z.array(z.object({
+                start: z.coerce.date(),
+                end: z.coerce.date()
+            }))
+        }))
+        .mutation(async ({ input }) => {
+
+            await db.pickupSlot.deleteMany({
+                where: { bookingId: input.bookingId }
+            });
+
+            await db.pickupSlot.createMany({
+                data: input.slots.map(s => ({
+                    bookingId: input.bookingId,
+                    start: s.start,
+                    end: s.end
+                }))
+            });
+
+            return { status: "OK" };
+        }),
+
+    confirmPickupSlot: adminProcedure
+        .input(z.object({
+            slotId: z.string(),
+            bookingId: z.string()
+        }))
+        .mutation(async ({ input }) => {
+            return db.$transaction(async (tx) => {
+                await tx.pickupSlot.updateMany({
+                    where: {bookingId: input.bookingId},
+                    data: {isConfirmed: false}
+                });
+
+                await tx.pickupSlot.update({
+                    where: {id: input.slotId},
+                    data: {isConfirmed: true}
+                });
+
+                return {status: "OK"};
             });
         }),
     
