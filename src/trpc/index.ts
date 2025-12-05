@@ -63,6 +63,7 @@ export const appRouter = router({
                 },
                 include: {
                     user: true,
+                    pickupSlots: true,
                     items: {
                         include: {
                             item: true,
@@ -141,6 +142,7 @@ export const appRouter = router({
                 },
                 orderBy: { createdAt: 'desc' },
                 include: {
+                    pickupSlots: true,
                     items: {
                         include: {
                             item: true,
@@ -299,6 +301,52 @@ export const appRouter = router({
                         totalRentalCost: newTotalCost,
                         adminNotes: adminNotes
                     }
+                });
+
+                return {status: "OK"};
+            });
+        }),
+
+    proposePickupSlots: privateProcedure
+        .input(z.object({
+            bookingId: z.string(),
+            slots: z.array(z.object({
+                start: z.coerce.date(),
+                end: z.coerce.date()
+            }))
+        }))
+        .mutation(async ({ input }) => {
+
+            await db.pickupSlot.deleteMany({
+                where: { bookingId: input.bookingId }
+            });
+
+            await db.pickupSlot.createMany({
+                data: input.slots.map(s => ({
+                    bookingId: input.bookingId,
+                    start: s.start,
+                    end: s.end
+                }))
+            });
+
+            return { status: "OK" };
+        }),
+
+    confirmPickupSlot: adminProcedure
+        .input(z.object({
+            slotId: z.string(),
+            bookingId: z.string()
+        }))
+        .mutation(async ({ input }) => {
+            return db.$transaction(async (tx) => {
+                await tx.pickupSlot.updateMany({
+                    where: {bookingId: input.bookingId},
+                    data: {isConfirmed: false}
+                });
+
+                await tx.pickupSlot.update({
+                    where: {id: input.slotId},
+                    data: {isConfirmed: true}
                 });
 
                 return {status: "OK"};

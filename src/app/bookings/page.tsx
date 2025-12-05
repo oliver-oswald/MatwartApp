@@ -2,20 +2,44 @@
 
 import React, { useState } from 'react';
 import { trpc } from "@/app/_trpc/client";
-import { Loader2, AlertTriangle, Info, CalendarClock, PackageCheck, AlertOctagon, CheckCircle2 } from 'lucide-react';
+import {
+    Loader2,
+    AlertTriangle,
+    Info,
+    CalendarClock,
+    PackageCheck,
+    AlertOctagon,
+    CheckCircle2,
+    Clock
+} from 'lucide-react';
 import {
     Card, CardHeader, CardBody, CardFooter, Chip, Divider, Avatar, Button, Tooltip
 } from "@heroui/react";
 import { toast } from "react-hot-toast";
 import { DamageReportModal } from '@/components/bookings/DamageReportModal';
 import {getStatusColor} from "@/lib/utils";
+import {PickupProposalModal} from "@/components/bookings/PickupProposalModal";
 
 export default function MyBookingsPage() {
     const utils = trpc.useUtils();
     const { data: bookings, isLoading } = trpc.getUserBookings.useQuery();
+    const [bookingForPickup, setBookingForPickup] = useState<{id: string, start: Date} | null>(null);
 
-    // Modal State
     const [selectedItemForReport, setSelectedItemForReport] = useState<{id: string, name: string} | null>(null);
+
+    const proposeMutation = trpc.proposePickupSlots.useMutation({
+        onSuccess: () => {
+            toast.success("Vorschläge gesendet!");
+            utils.getUserBookings.invalidate();
+            setBookingForPickup(null);
+        }
+    });
+
+    const handleProposeSubmit = (slots: { start: Date, end: Date }[]) => {
+        if(bookingForPickup) {
+            proposeMutation.mutate({ bookingId: bookingForPickup.id, slots });
+        }
+    };
 
     const reportMutation = trpc.reportDamage.useMutation({
         onSuccess: () => {
@@ -100,6 +124,51 @@ export default function MyBookingsPage() {
                                     </div>
                                 )}
 
+                                {booking.status === "AKZEPTIERT" && (
+                                    <div className="p-4 bg-stone-100 rounded-lg border border-stone-200">
+                                        <h4 className="font-bold text-stone-700 mb-2 flex items-center gap-2">
+                                            <Clock size={16} /> Abholung
+                                        </h4>
+                                        {booking.pickupSlots && booking.pickupSlots.length > 0 ? (
+                                            <div>
+                                                {/* Check if confirmed */}
+                                                {booking.pickupSlots.some((s) => s.isConfirmed) ? (
+                                                    <div className="bg-green-100 border border-green-300 text-green-800 p-3 rounded-md flex items-center gap-3">
+                                                        <CheckCircle2 size={24} />
+                                                        <div>
+                                                            <p className="font-bold">Termin bestätigt! Bereit zur Abholung.</p>
+                                                            {booking.pickupSlots.filter((s) => s.isConfirmed).map((s) => (
+                                                                <p key={s.id} className="text-sm">
+                                                                    {new Date(s.start).toLocaleDateString()} von {new Date(s.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} bis {new Date(s.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="text-sm text-stone-500 italic">
+                                                            {booking.pickupSlots.length} Termine vorgeschlagen. Warten auf Bestätigung...
+                                                        </div>
+                                                        <Button size="sm" variant="light" color="primary" onPress={() => setBookingForPickup({ id: booking.id, start: new Date(booking.startDate) })}>
+                                                            Ändern
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm text-stone-600">Bitte schlage Termine für die Abholung vor.</p>
+                                                <Button
+                                                    size="sm" color="primary"
+                                                    onPress={() => setBookingForPickup({ id: booking.id, start: new Date(booking.startDate) })}
+                                                >
+                                                    Termin vorschlagen
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {booking.items.map((bItem) => {
                                         const wasChanged = bItem.originalQuantity && bItem.originalQuantity !== bItem.quantity;
@@ -168,6 +237,16 @@ export default function MyBookingsPage() {
                     itemName={selectedItemForReport.name}
                     onSubmit={handleReportSubmit}
                     isSubmitting={reportMutation.isPending}
+                />
+            )}
+
+            {bookingForPickup && (
+                <PickupProposalModal
+                    isOpen={true}
+                    onClose={() => setBookingForPickup(null)}
+                    bookingStartDate={bookingForPickup.start}
+                    onSubmit={handleProposeSubmit}
+                    isSubmitting={proposeMutation.isPending}
                 />
             )}
         </div>

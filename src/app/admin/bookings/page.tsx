@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { BookingStatus, BrokenItemRecord } from '@/types';
-import { CalendarCheck, PackageOpen, CheckSquare, Loader2, AlertTriangle, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import {CalendarCheck, PackageOpen, CheckSquare, Loader2, AlertTriangle, Image as ImageIcon, Clock} from 'lucide-react';
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
 import { ReturnModal } from '@/components/admin/ReturnModal';
 import { BookingRequestCard } from '@/components/admin/BookingRequestCard';
-import { Accordion, AccordionItem, Avatar, Button, Chip, Tooltip, Link } from "@heroui/react";
+import { Accordion, AccordionItem, Avatar, Button, Chip, Link } from "@heroui/react";
 import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
 
@@ -19,6 +19,13 @@ export default function Page() {
     const utils = trpc.useUtils();
     const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
     const [loadingId, setLoadingId] = useState<string | null>(null);
+
+    const confirmSlotMutation = trpc.confirmPickupSlot.useMutation({
+        onSuccess: () => {
+            toast.success("Termin bestätigt!");
+            utils.getAllBookings.invalidate();
+        }
+    });
 
     const { data: bookings, isLoading } = trpc.getAllBookings.useQuery();
 
@@ -111,8 +118,12 @@ export default function Page() {
                 <div className="grid gap-4">
                     {activeBookings.length === 0 && <p className="text-stone-400 italic text-sm">Keine aktiven Ausleihen.</p>}
                     {activeBookings.map(b => {
-                        // Check if any item in this booking has damage reports
+
                         const hasAnyDamage = b.items.some(i => i.damageReports && i.damageReports.length > 0);
+
+                        const pickupSlots = b.pickupSlots || [];
+                        const hasProposals = pickupSlots.length > 0;
+                        const confirmedSlot = pickupSlots.find((s) => s.isConfirmed);
 
                         return (
                             <div key={b.id} className={`bg-white rounded-lg shadow-sm border ${hasAnyDamage ? 'border-l-4 border-l-red-500 border-red-200' : 'border-l-4 border-l-blue-400 border-stone-100'} overflow-hidden`}>
@@ -144,6 +155,47 @@ export default function Page() {
                                         )}
                                     </div>
                                 </div>
+                                {b.status === BookingStatus.AKZEPTIERT && (
+                                    <div className="m-2 border-t border-stone-100 p-2">
+                                        <div className="flex items-start gap-2">
+                                            <Clock size={16} className="mt-1 text-stone-400"/>
+                                            <div className="flex-1">
+                                                <span className="text-xs font-bold text-stone-500 uppercase">Abholtermin</span>
+
+                                                {!hasProposals ? (
+                                                    <p className="text-sm text-stone-400 italic">User hat noch keine Vorschläge gesendet.</p>
+                                                ) : confirmedSlot ? (
+                                                    <div className="flex justify-between items-center bg-green-50 p-2 rounded border border-green-200 mt-1">
+                                <span className="text-sm font-bold text-green-800">
+                                    {new Date(confirmedSlot.start).toLocaleDateString()} {new Date(confirmedSlot.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                                                        <Chip size="sm" color="success" variant="flat">Bestätigt</Chip>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-2 space-y-2">
+                                                        <p className="text-xs text-orange-600 font-bold">Bitte Termin wählen:</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {pickupSlots.map((slot) => (
+                                                                <button
+                                                                    key={slot.id}
+                                                                    onClick={() => confirmSlotMutation.mutate({ slotId: slot.id, bookingId: b.id })}
+                                                                    className="text-xs bg-white border border-stone-300 hover:border-forest-500 hover:bg-forest-50 px-3 py-2 rounded shadow-sm transition-all text-left"
+                                                                >
+                                                                    <div className="font-bold text-stone-700">
+                                                                        {new Date(slot.start).toLocaleDateString()}
+                                                                    </div>
+                                                                    <div className="text-stone-500">
+                                                                        {new Date(slot.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(slot.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="border-t border-stone-100 px-2">
                                     <Accordion isCompact>
                                         <AccordionItem
@@ -156,7 +208,7 @@ export default function Page() {
                                             }
                                         >
                                             <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {b.items.map((bookingItem) => {
+                                                {b.items.filter((bookingItem) => bookingItem.quantity > 0).map((bookingItem) => {
                                                     const reports = bookingItem.damageReports || [];
                                                     const isBroken = reports.length > 0;
 
