@@ -11,33 +11,34 @@ export function generateSwissQRString(
     const credZip = process.env.NEXT_PUBLIC_BANK_ZIP || '8000';
     const credCity = process.env.NEXT_PUBLIC_BANK_CITY || 'Zürich';
 
-    // The SPC string format requires specific fields in a specific order separated by CRLF
+    // The SPC string format requires exactly 32-34 lines (fields)
     const lines = [
         'SPC',         // 1. QRType
         '0200',        // 2. Version
         '1',           // 3. Coding
         iban.replace(/\s/g, ''),          // 4. IBAN
-        'K',           // 5. Creditor Address Type
+        'S',           // 5. Creditor Address Type
         credName.substring(0, 70),   // 6. Name
         credStreet.substring(0, 70), // 7. Address
-        credZip,       // 8. Postal code
-        credCity,      // 9. City
-        'CH',          // 10. Country
-        '', '', '', '', '', '', '',  // 11-17. Ultimate Creditor
-        amount.toFixed(2),           // 18. Amount
-        'CHF',         // 19. Currency
-        'K',           // 20. Debtor Address Type
-        debtorName.substring(0, 70), // 21. Name
-        debtorStreet.substring(0, 70),// 22. Address
-        debtorZip,     // 23. Zip
-        debtorCity,    // 24. City
-        'CH',          // 25. Country
-        'NON',         // 26. Reference Type (NON = no reference required)
-        '',            // 27. Reference
-        'Rechnung für Materialmiete', // 28. Unstructured message
-        'EPD',         // 29. Trailer
-        '',            // 30. Billing info
-        ''             // Trailing CRLF
+        '',            // 8. Building Number
+        credZip,       // 9. Postal code
+        credCity,      // 10. City
+        'CH',          // 11. Country
+        '', '', '', '', '', '', '',  // 12-18. Ultimate Creditor
+        amount.toFixed(2),           // 19. Amount
+        'CHF',         // 20. Currency
+        'S',           // 21. Debtor Address Type
+        debtorName.substring(0, 70), // 22. Name
+        debtorStreet.substring(0, 70),// 23. Address
+        '',            // 24. Building Number
+        debtorZip,     // 25. Zip
+        debtorCity,    // 26. City
+        'CH',          // 27. Country
+        'NON',         // 28. Reference Type
+        '',            // 29. Reference
+        'Rechnung für Materialmiete', // 30. Unstructured message
+        'EPD',         // 31. Trailer
+        '',            // 32. Additional Information
     ];
 
     return lines.join('\n'); // using \n as react-qr-code processes it better
