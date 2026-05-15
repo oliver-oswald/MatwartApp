@@ -5,7 +5,7 @@ import { BookingStatus, BrokenItemRecord } from '@/types';
 import {CalendarCheck, PackageOpen, CheckSquare, Loader2, AlertTriangle, Image as ImageIcon, Clock} from 'lucide-react';
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
-import { ReturnModal } from '@/components/admin/ReturnModal';
+import { CheckoutFullscreenModal } from '@/components/admin/checkout/CheckoutFullscreenModal';
 import { BookingRequestCard } from '@/components/admin/BookingRequestCard';
 import { Accordion, AccordionItem, Avatar, Button, Chip, Link } from "@heroui/react";
 import { AppRouter } from "@/trpc";
@@ -289,7 +289,7 @@ export default function Page() {
             </section>
 
             {selectedBooking && (
-                <ReturnModal
+                <CheckoutFullscreenModal
                     booking={selectedBooking}
                     onClose={() => setSelectedBooking(null)}
                     onConfirm={handleConfirmReturn}
