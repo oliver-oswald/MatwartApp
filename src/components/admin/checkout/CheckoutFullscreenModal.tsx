@@ -1,11 +1,11 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragOverEvent, useDroppable } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Booking, BrokenItemRecord } from '@/types';
 import { inferRouterOutputs } from "@trpc/server";
 import { AppRouter } from "@/trpc";
 import { ReceiptPreview, ReceiptItem } from './ReceiptPreview';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import { Button, Chip } from '@heroui/react';
 import { X, FileDown, GripVertical } from 'lucide-react';
@@ -53,6 +53,17 @@ const SortableAvailableItem = ({ item }: { item: ReceiptItem }) => {
     );
 };
 
+const DroppableAvailableList = ({ items, children }: { items: ReceiptItem[], children: React.ReactNode }) => {
+    const { setNodeRef } = useDroppable({ id: 'available-list' });
+    return (
+        <DndSortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy} id="available-list">
+            <div ref={setNodeRef} className="min-h-[200px] p-2 bg-stone-100 rounded-lg border-2 border-dashed border-stone-200">
+                {children}
+            </div>
+        </DndSortableContext>
+    );
+};
+
 export function CheckoutFullscreenModal({ booking, onClose, onConfirm }: CheckoutFullscreenModalProps) {
     const previewRef = useRef<HTMLDivElement>(null);
     const [title, setTitle] = useState(`Ausleihe für ${booking.user.name || 'Unbekannt'}`);
@@ -97,6 +108,42 @@ export function CheckoutFullscreenModal({ booking, onClose, onConfirm }: Checkou
         useSensor(KeyboardSensor)
     );
 
+    const handleDragOver = (event: DragOverEvent) => {
+        const { active, over } = event;
+        if (!over) return;
+        
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        if (activeId === overId) return;
+
+        const isActiveInAvailable = availableItems.some(i => i.id === activeId);
+        const isOverInAvailable = overId === 'available-list' || availableItems.some(i => i.id === overId);
+        
+        if (isActiveInAvailable !== isOverInAvailable) {
+            const activeList = isActiveInAvailable ? availableItems : receiptItems;
+            const overList = isOverInAvailable ? availableItems : receiptItems;
+            const setActiveList = isActiveInAvailable ? setAvailableItems : setReceiptItems;
+            const setOverList = isOverInAvailable ? setAvailableItems : setReceiptItems;
+
+            const activeIndex = activeList.findIndex(i => i.id === activeId);
+            const overIndex = overId === 'available-list' || overId === 'receipt-list' 
+                ? overList.length 
+                : overList.findIndex(i => i.id === overId);
+
+            const activeItem = activeList[activeIndex];
+            if (!activeItem) return;
+            
+            setActiveList(prev => prev.filter(i => i.id !== activeId));
+            setOverList(prev => {
+                const next = [...prev];
+                const insertAt = overIndex >= 0 ? overIndex : next.length;
+                next.splice(insertAt, 0, activeItem);
+                return next;
+            });
+        }
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (!over) return;
@@ -104,33 +151,19 @@ export function CheckoutFullscreenModal({ booking, onClose, onConfirm }: Checkou
         const activeId = active.id as string;
         const overId = over.id as string;
 
-        const activeContainer = availableItems.find(i => i.id === activeId) ? 'available' : 'receipt';
-        const overContainer = overId === 'available-list' ? 'available' : overId === 'receipt-list' ? 'receipt' : (availableItems.find(i => i.id === overId) ? 'available' : 'receipt');
+        if (activeId !== overId) {
+            const isActiveInAvailable = availableItems.some(i => i.id === activeId);
+            const isOverInAvailable = overId === 'available-list' || availableItems.some(i => i.id === overId);
 
-        if (activeContainer === overContainer) {
-            // Reordering within same list
-            const items = activeContainer === 'available' ? availableItems : receiptItems;
-            const setItems = activeContainer === 'available' ? setAvailableItems : setReceiptItems;
-            const oldIndex = items.findIndex(i => i.id === activeId);
-            const newIndex = items.findIndex(i => i.id === overId);
-            if (oldIndex !== newIndex) {
-                setItems(arrayMove(items, oldIndex, newIndex));
+            if (isActiveInAvailable && isOverInAvailable) {
+                const oldIndex = availableItems.findIndex(i => i.id === activeId);
+                const newIndex = availableItems.findIndex(i => i.id === overId);
+                if (oldIndex !== newIndex) setAvailableItems(arrayMove(availableItems, oldIndex, newIndex));
+            } else if (!isActiveInAvailable && !isOverInAvailable) {
+                const oldIndex = receiptItems.findIndex(i => i.id === activeId);
+                const newIndex = receiptItems.findIndex(i => i.id === overId);
+                if (oldIndex !== newIndex) setReceiptItems(arrayMove(receiptItems, oldIndex, newIndex));
             }
-        } else {
-            // Moving between lists
-            const sourceList = activeContainer === 'available' ? availableItems : receiptItems;
-            const destList = activeContainer === 'available' ? receiptItems : availableItems;
-            const setSource = activeContainer === 'available' ? setAvailableItems : setReceiptItems;
-            const setDest = activeContainer === 'available' ? setReceiptItems : setAvailableItems;
-
-            const activeItem = sourceList.find(i => i.id === activeId)!;
-            const overIndex = destList.findIndex(i => i.id === overId);
-            const newIndex = overIndex >= 0 ? overIndex : destList.length;
-
-            setSource(sourceList.filter(i => i.id !== activeId));
-            const newDestList = [...destList];
-            newDestList.splice(newIndex, 0, activeItem);
-            setDest(newDestList);
         }
     };
 
@@ -184,7 +217,7 @@ export function CheckoutFullscreenModal({ booking, onClose, onConfirm }: Checkou
 
     return (
         <div className="fixed inset-0 z-50 bg-stone-100 flex overflow-hidden">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
 
                 {/* Left Sidebar */}
                 <div className="w-1/4 min-w-[300px] max-w-[400px] bg-stone-50 border-r border-stone-200 flex flex-col shadow-lg z-10">
@@ -199,16 +232,14 @@ export function CheckoutFullscreenModal({ booking, onClose, onConfirm }: Checkou
                         <p className="text-xs text-stone-500 mb-4">
                             Artikel hier können per Drag & Drop auf die Quittung gezogen werden.
                         </p>
-                        <DndSortableContext items={availableItems.map(i => i.id)} strategy={verticalListSortingStrategy} id="available-list">
-                            <div className="min-h-[200px] p-2 bg-stone-100 rounded-lg border-2 border-dashed border-stone-200">
-                                {availableItems.length === 0 && (
-                                    <p className="text-stone-400 text-sm italic text-center py-4">Leer</p>
-                                )}
-                                {availableItems.map(item => (
-                                    <SortableAvailableItem key={item.id} item={item} />
-                                ))}
-                            </div>
-                        </DndSortableContext>
+                        <DroppableAvailableList items={availableItems}>
+                            {availableItems.length === 0 && (
+                                <p className="text-stone-400 text-sm italic text-center py-4">Leer</p>
+                            )}
+                            {availableItems.map(item => (
+                                <SortableAvailableItem key={item.id} item={item} />
+                            ))}
+                        </DroppableAvailableList>
                     </div>
 
                     <div className="p-4 bg-white border-t border-stone-200">

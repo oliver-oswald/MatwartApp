@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateSwissQRString } from '@/lib/swissqr';
-import { useSortable } from '@dnd-kit/sortable';
+import { useSortable, SortableContext as DndSortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/react';
 import { Pencil, Trash2, GripVertical } from 'lucide-react';
@@ -98,6 +99,17 @@ const SortableReceiptItem = ({ item, onUpdatePrice, onRemoveItem }: { item: Rece
     );
 };
 
+const DroppableReceiptList = ({ items, children }: { items: ReceiptItem[], children: React.ReactNode }) => {
+    const { setNodeRef } = useDroppable({ id: 'receipt-list' });
+    return (
+        <DndSortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy} id="receipt-list">
+            <div ref={setNodeRef} className="flex flex-col min-h-[50px]">
+                {children}
+            </div>
+        </DndSortableContext>
+    );
+};
+
 export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
     title, setTitle, items, discount, setDiscount, debtorName, onUpdatePrice, onRemoveItem, previewRef
 }) => {
@@ -153,9 +165,11 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                         </div>
 
                         {items.length === 0 ? (
-                            <p className="text-stone-400 italic text-sm text-center py-10">Ziehe Artikel hierher, um sie zur Rechnung hinzuzufügen.</p>
+                            <DroppableReceiptList items={items}>
+                                <p className="text-stone-400 italic text-sm text-center py-10">Ziehe Artikel hierher, um sie zur Rechnung hinzuzufügen.</p>
+                            </DroppableReceiptList>
                         ) : (
-                            <div className="flex flex-col">
+                            <DroppableReceiptList items={items}>
                                 {items.map(item => (
                                     <SortableReceiptItem
                                         key={item.id}
@@ -164,7 +178,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                                         onRemoveItem={onRemoveItem}
                                     />
                                 ))}
-                            </div>
+                            </DroppableReceiptList>
                         )}
                     </div>
 
