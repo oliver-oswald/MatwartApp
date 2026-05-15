@@ -196,7 +196,7 @@ export function CheckoutFullscreenModal({ booking, onClose, onConfirm }: Checkou
             const pdfHeight = 297;
             const canvasRatio = canvas.height / canvas.width;
 
-            let imgHeight = pdfWidth * canvasRatio;
+            const imgHeight = pdfWidth * canvasRatio;
 
             // If the content is longer than A4, it will be scaled down to fit, or we could add pages.
             // But since a Swiss QR bill *must* be at the exact bottom of A4, we scale to fit A4 perfectly.
