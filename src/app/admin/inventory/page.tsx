@@ -3,7 +3,7 @@
 import React from 'react';
 import { Categories } from '@/types';
 import { CATEGORIES } from '@/constants';
-import {PlusCircle, Trash2, Loader2, Ghost} from 'lucide-react';
+import {PlusCircle, Trash2, Loader2, Ghost, Pencil} from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {ItemFormData, itemFormSchema} from "@/lib/validators/item";
@@ -49,8 +49,18 @@ export default function Page() {
             toast.success("Item gelöscht");
             utils.getAllItems.invalidate();
         },
-        onError: () => {
-            toast.error("Fehler beim Löschen");
+        onError: (err) => {
+            toast.error(err.message || "Fehler beim Löschen");
+        }
+    });
+
+    const updateStockMutation = trpc.updateItemStock.useMutation({
+        onSuccess: () => {
+            toast.success("Stock aktualisiert");
+            utils.getAllItems.invalidate();
+        },
+        onError: (err) => {
+            toast.error(err.message || "Fehler beim Aktualisieren");
         }
     });
 
@@ -198,6 +208,14 @@ export default function Page() {
                                         >
                                             {deleteMutation.isPending ? <Loader2 className="animate-spin" size={16}/> :
                                                 <Trash2 size={16}/>}
+                                        </button>
+                                        <button
+                                            onClick={() => updateStockMutation.mutate({id: item.id, totalStock: 1})}
+                                            disabled={updateStockMutation.isPending}
+                                            className="text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-30"
+                                        >
+                                            {updateStockMutation.isPending ? <Loader2 className="animate-spin" size={16}/> :
+                                                <Pencil size={16}/>}
                                         </button>
                                     </td>
                                 </tr>

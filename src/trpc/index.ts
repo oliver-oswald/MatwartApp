@@ -45,15 +45,55 @@ export const appRouter = router({
 
             return { status: "OK" }
         }),
+    updateItemStock: adminProcedure
+        .input(z.object({
+            id: z.string(),
+            totalStock: z.number().min(0)
+        }))
+        .mutation(async ({input}) => {
+            return db.$transaction(async (tx) => {
+                const item = await tx.item.findUnique({ where: { id: input.id } });
+                if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Item not found" });
+
+                const diff = input.totalStock - item.totalStock;
+                const newAvailableStock = Math.max(0, item.availableStock + diff);
+
+                await tx.item.update({
+                    where: { id: input.id },
+                    data: {
+                        totalStock: input.totalStock,
+                        availableStock: newAvailableStock
+                    }
+                });
+                return { status: "OK" };
+            });
+        }),
     deleteItem: adminProcedure
         .input(z.string())
         .mutation(async ({input}) => {
-
-            await db.item.delete({
-                where: { id: input }
-            })
-
-            return { status: "OK" }
+            try {
+                await db.item.delete({
+                    where: { id: input }
+                })
+                return { status: "OK" }
+            } catch (error: any) {
+                if (error.code === 'P2003') {
+                    throw new TRPCError({
+                        code: "CONFLICT",
+                        message: "Dieses Item ist noch Teil einer Buchung und kann nicht gelöscht werden."
+                    });
+                }
+                if (error.code === 'P2025') {
+                    throw new TRPCError({
+                        code: "NOT_FOUND",
+                        message: "Dieses Item existiert nicht oder wurde bereits gelöscht."
+                    });
+                }
+                throw new TRPCError({
+                    code: "INTERNAL_SERVER_ERROR",
+                    message: "Ein unerwarteter Fehler ist aufgetreten."
+                });
+            }
         }),
     getAllBookings: adminProcedure
         .query(async () => {

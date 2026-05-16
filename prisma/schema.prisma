@@ -20,11 +20,20 @@ enum Role {
 }
 
 enum Categories {
-  unterkunft
-  kochen
-  schlafen
-  beleuchtung
-  sonstiges
+  kitchen
+  tools
+  tents
+  ropes
+  climbing
+  storage
+  cooking
+  construction
+  lighting
+  navigation
+  safety
+  camouflage
+  sanitary
+  misc
 }
 
 enum BookingStatus {
@@ -89,7 +98,7 @@ model VerificationToken {
 model Item {
   id              String     @id @default(uuid())
   name            String
-  description     String
+  description     String?
   pricePerDay     Float
   replacementCost Float
   category        Categories
@@ -135,7 +144,7 @@ model BookingItem {
   id        String  @id @default(uuid())
   booking   Booking @relation(fields: [bookingId], references: [id])
   bookingId String
-  item      Item    @relation(fields: [itemId], references: [id])
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId    String
 
   quantity         Int
@@ -148,7 +157,7 @@ model BookingItem {
 model DamageReport {
   id            String      @id @default(uuid())
   bookingItemId String
-  bookingItem   BookingItem @relation(fields: [bookingItemId], references: [id])
+  bookingItem   BookingItem @relation(fields: [bookingItemId], references: [id], onDelete: Cascade)
 
   description String
   imageUrl    String
@@ -159,7 +168,7 @@ model BrokenItemRecord {
   id        String  @id @default(uuid())
   booking   Booking @relation(fields: [bookingId], references: [id])
   bookingId String
-  item      Item    @relation(fields: [itemId], references: [id])
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId    String
 
   name  String
