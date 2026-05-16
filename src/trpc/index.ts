@@ -76,14 +76,14 @@ export const appRouter = router({
                     where: { id: input }
                 })
                 return { status: "OK" }
-            } catch (error: any) {
-                if (error.code === 'P2003') {
+            } catch (error: unknown) {
+                if ((error as {code: string}).code === 'P2003') {
                     throw new TRPCError({
                         code: "CONFLICT",
                         message: "Dieses Item ist noch Teil einer Buchung und kann nicht gelöscht werden."
                     });
                 }
-                if (error.code === 'P2025') {
+                if ((error as {code: string}).code === 'P2025') {
                     throw new TRPCError({
                         code: "NOT_FOUND",
                         message: "Dieses Item existiert nicht oder wurde bereits gelöscht."
