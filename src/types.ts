@@ -1,4 +1,4 @@
-export type Categories = 'unterkunft' | 'kochen' | 'schlafen' | 'beleuchtung' | 'sonstiges'
+export type Categories = "navigation" | "kitchen" | "tools" | "tents" | "ropes" | "climbing" | "storage" | "cooking" | "construction" | "lighting" | "safety" | "camouflage" | "sanitary" | "misc"
 
 export interface Item {
     id: string;
