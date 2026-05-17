@@ -23,7 +23,9 @@ export function ItemCard({ item, onAddToCart }: ItemCardProps) {
                 <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-lg text-stone-800 leading-tight">{item.name}</h3>
                 </div>
-                <p className="text-stone-500 text-sm mb-4 flex-1">{item.description}</p>
+                {item.description && (
+                    <p className="text-stone-500 text-sm mb-4 flex-1">{item.description}</p>
+                )}
                 <div className="flex justify-between items-center mt-auto">
           <span
               className={`text-xs px-2 py-1 rounded-full ${

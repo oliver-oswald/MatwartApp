@@ -3,7 +3,7 @@ export type Categories = "navigation" | "kitchen" | "tools" | "tents" | "ropes" 
 export interface Item {
     id: string;
     name: string;
-    description: string;
+    description: string | null;
     pricePerDay: number;
     replacementCost: number;
     category: Categories;
