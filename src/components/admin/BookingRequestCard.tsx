@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BookingStatus } from '@/types';
-import { Loader2, Save, X } from 'lucide-react';
+import { FileWarning, Loader2, MailWarning, Save, TriangleAlert, X } from 'lucide-react';
 import {Avatar, Chip, Input, Textarea, Button, Accordion, AccordionItem} from "@heroui/react";
 import { toast } from "react-hot-toast";
 import { AppRouter } from "@/trpc";
@@ -13,9 +13,16 @@ interface BookingRequestCardProps {
     onUpdateStatus: (id: string, status: BookingStatus) => void;
     onModifyAndApprove: (id: string, notes: string, items: { bookingItemId: string, newQuantity: number }[]) => void;
     isProcessing: boolean;
+    overbookedItems: {
+        id: string;
+        name: string;
+        booked: number;
+        available: number;
+        overflow: number;
+    }[];
 }
 
-export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove, isProcessing }: BookingRequestCardProps) {
+export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove, isProcessing, overbookedItems }: BookingRequestCardProps) {
     const [isEditing, setIsEditing] = useState(false);
 
     const [editNote, setEditNote] = useState(booking.adminNotes || '');
@@ -106,7 +113,7 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
                             <div className="pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {booking.items.map((bookingItem) => (
                                     <div key={bookingItem.id}
-                                         className="flex items-center gap-3 bg-stone-50 p-2 rounded-lg border border-stone-100">
+                                         className={`flex items-center gap-3 bg-stone-50 p-2 rounded-lg border ${overbookedItems.some((i) => i.id === bookingItem.item.id) ? 'border-l-4 border-l-yellow-500' : 'border-stone-100'}`}>
                                         <Avatar
                                             src={bookingItem.item.imageUrl}
                                             radius="sm"
@@ -117,6 +124,11 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
                                                         <span
                                                             className="text-sm font-semibold text-stone-800 line-clamp-1">
                                                             {bookingItem.item.name}
+                                                            {bookingItem.item.description && (
+                                                                <span className="text-xs text-stone-500 ml-1">
+                                                                    ({bookingItem.item.description})
+                                                                </span>
+                                                            )}
                                                         </span>
                                             <div className="flex gap-2 text-xs text-stone-500">
                                                 <span>Menge: <span
@@ -125,6 +137,12 @@ export function BookingRequestCard({ booking, onUpdateStatus, onModifyAndApprove
                                                 <span>Einzel: CHF {bookingItem.pricePerDay}</span>
                                             </div>
                                         </div>
+                                        {overbookedItems.some(i => i.id === bookingItem.item.id) && (
+                                            <div className="ml-auto text-sm font-bold text-yellow-700">
+                                                <TriangleAlert size={16} className="text-yellow-500 mr-1 inline-block"/>
+                                                Überbucht
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

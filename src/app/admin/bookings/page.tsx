@@ -10,6 +10,7 @@ import { BookingRequestCard } from '@/components/admin/BookingRequestCard';
 import { Accordion, AccordionItem, Avatar, Button, Chip, Link } from "@heroui/react";
 import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
+import { getOverbookedItems } from '@/lib/utils';
 
 // Ensure your types are picking up the new 'damageReports' include from the backend
 type RouterOutputs = inferRouterOutputs<AppRouter>;
@@ -19,16 +20,16 @@ export default function Page() {
     const utils = trpc.useUtils();
     const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
     const [loadingId, setLoadingId] = useState<string | null>(null);
-
+    
     const confirmSlotMutation = trpc.confirmPickupSlot.useMutation({
         onSuccess: () => {
             toast.success("Termin bestätigt!");
             utils.getAllBookings.invalidate();
         }
     });
-
+    
     const { data: bookings, isLoading } = trpc.getAllBookings.useQuery();
-
+    
     const updateStatusMutation = trpc.updateBookingStatus.useMutation({
         onMutate: (vars) => setLoadingId(vars.id),
         onSuccess: (data) => {
@@ -42,7 +43,7 @@ export default function Page() {
             setLoadingId(null);
         }
     });
-
+    
     const modifyMutation = trpc.modifyAndApproveBooking.useMutation({
         onMutate: (vars) => setLoadingId(vars.bookingId),
         onSuccess: () => {
@@ -56,7 +57,7 @@ export default function Page() {
             setLoadingId(null);
         }
     });
-
+    
     const completeReturnMutation = trpc.completeReturn.useMutation({
         onSuccess: () => {
             toast.success("Rückgabe verarbeitet");
@@ -66,26 +67,27 @@ export default function Page() {
         },
         onError: (err) => toast.error(err.message)
     });
-
+    
     const handleUpdateStatus = (id: string, status: BookingStatus) => {
         updateStatusMutation.mutate({ id, status });
     };
-
+    
     const handleModifyAndApprove = (id: string, notes: string, items: { bookingItemId: string, newQuantity: number }[]) => {
         modifyMutation.mutate({ bookingId: id, adminNotes: notes, items });
     };
-
+    
     const handleConfirmReturn = (bookingId: string, brokenList: BrokenItemRecord[], totalCost: number, billNote: string) => {
         completeReturnMutation.mutate({ bookingId, brokenItems: brokenList, finalBillAmount: totalCost, adminNotes: billNote });
     };
-
+    
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
-
-    const safeBookings = bookings || [];
+    
+    const safeBookings = bookings?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
     const pendingBookings = safeBookings.filter(b => b.status === "WARTEN");
     const activeBookings = safeBookings.filter(b => ["AKZEPTIERT", "AKTIV"].includes(b.status));
     const completedBookings = safeBookings.filter(b => b.status === "FERTIG").slice(0, 5);
-
+    
+    const { items: overbookedItems } = getOverbookedItems(pendingBookings);
     return (
         <div className="space-y-8">
             {/* PENDING */}
@@ -105,6 +107,7 @@ export default function Page() {
                             onUpdateStatus={handleUpdateStatus}
                             onModifyAndApprove={handleModifyAndApprove}
                             isProcessing={loadingId === b.id}
+                            overbookedItems={overbookedItems}
                         />
                     ))}
                 </div>

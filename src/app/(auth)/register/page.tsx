@@ -69,6 +69,20 @@ export default function RegisterPage() {
                     </div>
 
                     <div>
+                        <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Wen würdest du als Leiter des Jahres wählen?</label>
+                        <select
+                            {...register("email")}
+                            className="w-full rounded-lg border-stone-200 bg-stone-50 shadow-sm focus:border-forest-500 focus:ring-forest-500 p-3 transition-all"
+                        >
+                            <option value="">---</option>
+                            <option value="">Mäggi</option>
+                        </select>
+                        {errors.email?.message !== undefined ? (
+                            <p className="text-red-500 text-xs">{errors.email.message}</p>
+                        ) : null}
+                    </div>
+
+                    <div>
                         <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Passwort</label>
                         <input
                             {...register("password")}

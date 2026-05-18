@@ -108,7 +108,7 @@ export function CartDrawer({
                                        className="rounded object-cover bg-stone-100"/>
                                 <div className="flex-1">
                                     <h4 className="font-semibold text-stone-800 text-sm">{item.name}</h4>
-                                    <p className="text-xs text-stone-500">CHF {item.pricePerDay} / tag</p>
+                                    <h6 className="text-xs text-stone-500">{item.description}</h6>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => onUpdateQuantity(item.id, -1)} type="button"
