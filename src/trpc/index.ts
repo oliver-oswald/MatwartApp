@@ -295,6 +295,121 @@ export const appRouter = router({
                 return {status: "OK", newStatus};
             });
         }),
+    modifyBookingItems: adminProcedure
+        .input(z.object({
+            bookingId: z.string(),
+            items: z.array(z.object({
+                bookingItemId: z.string(),
+                newQuantity: z.number().min(0)
+            }))
+        }))
+        .mutation(async ({ input }) => {
+            const { bookingId, items: newItemsConfig } = input;
+
+            return db.$transaction(async (tx) => {
+                const booking = await tx.booking.findUnique({
+                    where: {id: bookingId},
+                    include: {items: true}
+                });
+
+                if (!booking) throw new TRPCError({code: "NOT_FOUND"});
+
+                for (const config of newItemsConfig) {
+                    const currentBookingItem = booking.items.find(i => i.id === config.bookingItemId);
+                    if (!currentBookingItem) continue;
+
+                    const newQty = config.newQuantity;
+                    const qtyDiff = newQty - currentBookingItem.quantity;
+
+                    if (qtyDiff === 0) continue;
+
+                    const currentItem = await tx.item.findUnique({where: {id: currentBookingItem.itemId}});
+                    if (!currentItem) {
+                        throw new TRPCError({code: "NOT_FOUND", message: `Associated item not found for booking item ${currentBookingItem.id}`});
+                    }
+
+                    if (qtyDiff > 0 && currentItem.availableStock < qtyDiff) {
+                        throw new TRPCError({
+                            code: "CONFLICT",
+                            message: `Cannot increase quantity for item '${currentItem.name}'. Not enough stock available.`
+                        });
+                    }
+
+                    await tx.bookingItem.update({
+                        where: {id: config.bookingItemId},
+                        data: {quantity: newQty}
+                    });
+
+                    await tx.item.update({
+                        where: {id: currentBookingItem.itemId},
+                        data: {
+                            availableStock: qtyDiff > 0 ? {decrement: qtyDiff} : {increment: -qtyDiff}
+                        }
+                    });
+                }
+
+                return {status: "OK"};
+            });
+        }),
+        addItemToBooking: adminProcedure
+        .input(z.object({
+            bookingId: z.string(),
+            itemId: z.string(),
+            quantity: z.number().min(1)
+        }))
+        .mutation(async ({ input }) => {
+            const { bookingId, itemId, quantity } = input;
+
+            return db.$transaction(async (tx) => {
+                const booking = await tx.booking.findUnique({
+                    where: {id: bookingId},
+                    include: {items: true}
+                });
+
+                if (!booking) throw new TRPCError({code: "NOT_FOUND"});
+
+                const item = await tx.item.findUnique({where: {id: itemId}});
+                if (!item) throw new TRPCError({code: "NOT_FOUND", message: "Item not found"});
+
+                if (item.availableStock < quantity) {
+                    throw new TRPCError({
+                        code: "CONFLICT",
+                        message: `Not enough stock for item '${item.name}'. Requested: ${quantity}, Available: ${item.availableStock}`
+                    });
+                }
+
+                const diffTime = Math.abs(booking.endDate.getTime() - booking.startDate.getTime());
+                const durationInDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+                const additionalCost = item.pricePerDay * quantity * durationInDays;
+
+                await tx.bookingItem.create({
+                    data: {
+                        bookingId: bookingId,
+                        itemId: itemId,
+                        quantity: quantity,
+                        originalQuantity: quantity,
+                        pricePerDay: item.pricePerDay,
+                        replacementCost: item.replacementCost
+                    }
+                });
+
+                await tx.item.update({
+                    where: {id: itemId},
+                    data: {
+                        availableStock: {decrement: quantity}
+                    }
+                });
+
+                await tx.booking.update({
+                    where: {id: bookingId},
+                    data: {
+                        totalRentalCost: {increment: additionalCost}
+                    }
+                });
+
+                return {status: "OK"};
+            });
+        }),
     modifyAndApproveBooking: adminProcedure
         .input(z.object({
             bookingId: z.string(),

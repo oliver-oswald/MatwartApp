@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { BookingStatus, BrokenItemRecord } from '@/types';
-import {CalendarCheck, PackageOpen, CheckSquare, Loader2, AlertTriangle, Image as ImageIcon, Clock} from 'lucide-react';
+import {CalendarCheck, PackageOpen, CheckSquare, Loader2, AlertTriangle, Image as ImageIcon, Clock, Plus, Minus, Trash2} from 'lucide-react';
 import { trpc } from "@/app/_trpc/client";
 import { toast } from "react-hot-toast";
 import { CheckoutFullscreenModal } from '@/components/admin/checkout/CheckoutFullscreenModal';
 import { BookingRequestCard } from '@/components/admin/BookingRequestCard';
-import { Accordion, AccordionItem, Avatar, Button, Chip, Link } from "@heroui/react";
+import { Accordion, AccordionItem, Avatar, Button, Chip, Link, Modal, ModalContent, useDisclosure } from "@heroui/react";
 import { AppRouter } from "@/trpc";
 import { inferRouterOutputs } from "@trpc/server";
 import { getOverbookedItems } from '@/lib/utils';
@@ -20,6 +20,10 @@ export default function Page() {
     const utils = trpc.useUtils();
     const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
     const [loadingId, setLoadingId] = useState<string | null>(null);
+    const [activeBookingForAddItem, setActiveBookingForAddItem] = useState<string | null>(null);
+    const [selectedItemToAdd, setSelectedItemToAdd] = useState<string>("");
+    const [newItemQuantity, setNewItemQuantity] = useState<number>(1);
+    const { isOpen, onOpen, onOpenChange } = useDisclosure();
     
     const confirmSlotMutation = trpc.confirmPickupSlot.useMutation({
         onSuccess: () => {
@@ -67,6 +71,40 @@ export default function Page() {
         },
         onError: (err) => toast.error(err.message)
     });
+
+    const modifyBookingItemsMutation = trpc.modifyBookingItems.useMutation({
+        onMutate: (vars) => setLoadingId(vars.bookingId),
+        onSuccess: () => {
+            toast.success("Buchungspositionen aktualisiert!");
+            utils.getAllBookings.invalidate();
+            utils.getAllItems.invalidate();
+            setLoadingId(null);
+        },
+        onError: (err) => {
+            toast.error(err.message);
+            setLoadingId(null);
+        }
+    });
+
+    const addItemToBookingMutation = trpc.addItemToBooking.useMutation({
+        onMutate: (vars) => setLoadingId(vars.bookingId),
+        onSuccess: () => {
+            toast.success("Gerät zur Buchung hinzugefügt!");
+            utils.getAllBookings.invalidate();
+            utils.getAllItems.invalidate();
+            setLoadingId(null);
+            setSelectedItemToAdd("");
+            setNewItemQuantity(1);
+            setActiveBookingForAddItem(null);
+            onOpenChange();
+        },
+        onError: (err) => {
+            toast.error(err.message);
+            setLoadingId(null);
+        }
+    });
+    
+    const { data: allItems, isLoading: isLoadingAllItems } = trpc.getAllItems.useQuery();
     
     const handleUpdateStatus = (id: string, status: BookingStatus) => {
         updateStatusMutation.mutate({ id, status });
@@ -78,6 +116,29 @@ export default function Page() {
     
     const handleConfirmReturn = (bookingId: string, brokenList: BrokenItemRecord[], totalCost: number, billNote: string) => {
         completeReturnMutation.mutate({ bookingId, brokenItems: brokenList, finalBillAmount: totalCost, adminNotes: billNote });
+    };
+
+    const handleModifyBookingItems = (bookingId: string, items: { bookingItemId: string, newQuantity: number }[]) => {
+        modifyBookingItemsMutation.mutate({ bookingId, items });
+    };
+
+    const handleAddItemToBooking = () => {
+        if (!activeBookingForAddItem || !selectedItemToAdd) return;
+
+        addItemToBookingMutation.mutate({
+            bookingId: activeBookingForAddItem,
+            itemId: selectedItemToAdd,
+            quantity: newItemQuantity
+        });
+    };
+
+    const handleAddItemModalToggle = () => {
+        if (isOpen) {
+            setActiveBookingForAddItem(null);
+            setSelectedItemToAdd("");
+            setNewItemQuantity(1);
+        }
+        onOpenChange();
     };
     
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
@@ -230,12 +291,37 @@ export default function Page() {
                                                                 <div className="flex flex-col">
                                                                     <span className="text-sm font-semibold text-stone-800 line-clamp-1">
                                                                         {bookingItem.item.name}
+                                                                        {bookingItem.item.description && (
+                                                                            <span className="text-xs text-stone-500 ml-1">
+                                                                                ({bookingItem.item.description})
+                                                                            </span>
+                                                                        )}
                                                                     </span>
                                                                     <div className="flex gap-2 text-xs text-stone-500">
                                                                         <span>Menge: <span className="font-mono font-bold text-stone-700">{bookingItem.quantity}x</span></span>
                                                                         <span>|</span>
                                                                         <span>Einzel: CHF {bookingItem.pricePerDay}</span>
                                                                     </div>
+                                                                </div>
+                                                                <div className='ml-auto flex items-center gap-2'>
+                                                                    <button onClick={() => handleModifyBookingItems(b.id, [{ bookingItemId: bookingItem.id, newQuantity: bookingItem.quantity + 1 }])} className="p-1 hover:bg-stone-200 rounded transition-colors">
+                                                                        <Plus size={16} className="text-stone-600" />
+                                                                    </button>
+                                                                    <span>/</span>
+                                                                    <button onClick={() => handleModifyBookingItems(b.id, [{ bookingItemId: bookingItem.id, newQuantity: Math.max(0, bookingItem.quantity - 1) }])} className="p-1 hover:bg-stone-200 rounded transition-colors">
+                                                                        <Minus size={16} className="text-stone-600" />
+                                                                    </button>
+                                                                    <button onClick={() => handleModifyBookingItems(b.id, [{ bookingItemId: bookingItem.id, newQuantity: 0 }])} className="p-1 hover:bg-red-100 rounded transition-colors">
+                                                                        <Trash2 size={16} className="text-red-600" />
+                                                                    </button>
+                                                                    <span className="text-xs text-stone-500">
+                                                                        Check:
+                                                                    </span>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        readOnly
+                                                                        className="rounded border-stone-300 text-green-600 focus:ring-green-500 w-4 h-4"
+                                                                    />
                                                                 </div>
                                                             </div>
                                                             
@@ -266,6 +352,84 @@ export default function Page() {
                                                         </div>
                                                     );
                                                 })}
+                                            </div>
+                                            <div className='w-full flex'>
+                                                <Button variant="ghost" size="sm" className="ml-auto my-3" onPress={() => {
+                                                    setActiveBookingForAddItem(b.id);
+                                                    onOpen();
+                                                }}>
+                                                    Gerät hinzufügen
+                                                </Button>
+                                                <Modal isOpen={isOpen} size='5xl' onOpenChange={handleAddItemModalToggle}>
+                                                    <ModalContent>
+                                                        {(onClose) => {
+                                                            const availableItems = (allItems || []).filter(item => item.availableStock > 0);
+                                                            const selectedItem = availableItems.find(item => item.id === selectedItemToAdd);
+
+                                                            return (
+                                                                <div className="p-6 space-y-4">
+                                                                    <h2 className="text-lg font-bold">Gerät hinzufügen</h2>
+                                                                    <p className="text-sm text-stone-500">Wählen Sie ein verfügbares Gerät und eine Menge aus, um es der Buchung hinzuzufügen.</p>
+
+                                                                    {isLoadingAllItems ? (
+                                                                        <p className="text-sm text-stone-500">Lade verfügbare Geräte...</p>
+                                                                    ) : !availableItems.length ? (
+                                                                        <p className="text-sm text-stone-500">Keine verfügbaren Geräte zum Hinzufügen vorhanden.</p>
+                                                                    ) : (
+                                                                        <div className="grid gap-4 sm:grid-cols-2">
+                                                                            <label className="block text-sm text-stone-700">
+                                                                                Gerät
+                                                                                <select
+                                                                                    value={selectedItemToAdd}
+                                                                                    onChange={(event) => setSelectedItemToAdd(event.target.value)}
+                                                                                    className="mt-1 w-full rounded border border-stone-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                                                                                >
+                                                                                    <option value="">Bitte wählen...</option>
+                                                                                    {availableItems.map(item => (
+                                                                                        <option key={item.id} value={item.id}>
+                                                                                            {item.name} ({item.availableStock} verfügbar)
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </label>
+
+                                                                            <label className="block text-sm text-stone-700">
+                                                                                Menge
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min={1}
+                                                                                    value={newItemQuantity}
+                                                                                    onChange={(event) => setNewItemQuantity(Math.max(1, Number(event.target.value) || 1))}
+                                                                                    className="mt-1 w-full rounded border border-stone-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                                                                                />
+                                                                            </label>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {selectedItem && (
+                                                                        <div className="rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
+                                                                            <p className="font-semibold">Ausgewähltes Gerät</p>
+                                                                            <p>{selectedItem.name}</p>
+                                                                            <p>CHF {selectedItem.pricePerDay.toFixed(2)} / Tag</p>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                                                                        <Button
+                                                                            onPress={handleAddItemToBooking}
+                                                                            disabled={!selectedItemToAdd || !activeBookingForAddItem || isLoadingAllItems || addItemToBookingMutation.status === "pending"}
+                                                                        >
+                                                                            Hinzufügen
+                                                                        </Button>
+                                                                        <Button variant="ghost" onPress={onClose} className="sm:ml-auto">
+                                                                            Schließen
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }}
+                                                    </ModalContent>
+                                                </Modal>
                                             </div>
                                         </AccordionItem>
                                     </Accordion>
@@ -299,5 +463,6 @@ export default function Page() {
                 />
             )}
         </div>
+
     );
 }
